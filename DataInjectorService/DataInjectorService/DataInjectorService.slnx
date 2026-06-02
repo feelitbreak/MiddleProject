@@ -1,5 +1,4 @@
 <Solution>
-  <Project Path="../DataInjectorService.Domain/DataInjectorService.Domain.csproj" Id="b306f8ae-5f74-4683-ad4a-03f83abb6a69" />
-  <Project Path="../DataInjectorService.Infrastructure/DataInjectorService.Infrastructure.csproj" Id="46243541-8ca4-4a26-9c42-567181b2be02" />
+  <Project Path="../DataInjectorService.Tests/DataInjectorService.Tests.csproj" Id="28b072aa-1d7e-45aa-9315-d1b53c1ebe25" />
   <Project Path="DataInjectorService.csproj" />
 </Solution>

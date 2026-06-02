@@ -8,7 +8,10 @@ public static class Extensions
     {
         services.AddSwaggerGen(options =>
         {
-            options.SwaggerDoc("v1", new OpenApiInfo { Title = "DataInjectorService", Version = "v1" });
+            options.SwaggerDoc(
+                "v1",
+                new OpenApiInfo { Title = "DataInjectorService", Version = "v1" }
+            );
         });
     }
 }
