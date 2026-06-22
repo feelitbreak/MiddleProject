@@ -27,8 +27,4 @@
     </PackageReference>
     <PackageReference Include="Swashbuckle.AspNetCore" Version="10.1.7" />
   </ItemGroup>
-
-  <Target Name="PreBuild" BeforeTargets="PreBuildEvent">
-    <Exec Command="dotnet format DataInjectorService.slnx" />
-  </Target>
 </Project>
