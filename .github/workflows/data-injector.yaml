@@ -1,4 +1,4 @@
-name: Data Injector Service - Build
+name: Data Injector Service - Build & Publish
 
 on: [push]
 
@@ -40,3 +40,23 @@ jobs:
         dotnet build --no-restore
         dotnet-coverage collect "dotnet test --no-build --verbosity normal" -f xml -o "coverage.xml"
         dotnet-sonarscanner end /d:sonar.token="${{ secrets.SONAR_TOKEN }}"
+  publish:
+#    if: github.ref == 'refs/heads/main'
+    needs: build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./DataInjectorService/DataInjectorService
+    steps:
+    - name: Login to Docker Hub
+      uses: docker/login-action@v4
+      with:
+        username: ${{ vars.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_TOKEN }}
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v4
+    - name: Build and push
+      uses: docker/build-push-action@v7
+      with:
+        push: true
+        tags: ${{ vars.DOCKERHUB_REPOSITORY }}:latest
