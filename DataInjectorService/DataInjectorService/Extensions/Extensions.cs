@@ -1,6 +1,6 @@
-﻿using Microsoft.OpenApi;
+﻿namespace DataInjectorService.Extensions;
 
-namespace DataInjectorService.Extensions;
+using Microsoft.OpenApi;
 
 public static class Extensions
 {
@@ -10,8 +10,7 @@ public static class Extensions
         {
             options.SwaggerDoc(
                 "v1",
-                new OpenApiInfo { Title = "DataInjectorService", Version = "v1" }
-            );
+                new OpenApiInfo { Title = "DataInjectorService", Version = "v1" });
         });
     }
 }
