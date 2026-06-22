@@ -26,15 +26,16 @@ jobs:
       with:
         path: ~/.sonar/cache
         key: ${{ runner.os }}-sonar
-    - name: Install SonarQube scanner
-      run:
+    - name: Install .NET tools
+      run: |
+        dotnet tool update --global dotnet-coverage
         dotnet tool update --global dotnet-sonarscanner
-    - name: Build and analyze
+    - name: Build and Analyze
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
         dotnet restore
-        dotnet-sonarscanner begin /k:"feelitbreak_MiddleProject" /o:"feelitbreak" /d:sonar.token="${{ secrets.SONAR_TOKEN }}"
+        dotnet-sonarscanner begin /k:"feelitbreak_MiddleProject" /o:"feelitbreak" /d:sonar.token="${{ secrets.SONAR_TOKEN }}" /d:sonar.cs.vscoveragexml.reportsPaths=coverage.xml
         dotnet build --no-restore
-        dotnet test --no-build --verbosity normal
+        dotnet-coverage collect "dotnet test --no-build --verbosity normal" -f xml -o "coverage.xml"
         dotnet-sonarscanner end /d:sonar.token="${{ secrets.SONAR_TOKEN }}"
