@@ -5,43 +5,36 @@ on: [push]
 jobs:
   build:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./DataInjectorService/DataInjectorService
     steps:
     - uses: actions/checkout@v6
     - name: Setup .NET
       uses: actions/setup-dotnet@v5
       with:
         dotnet-version: '10.0.x'
-    - name: Build & Test
-      run: |
-        dotnet restore
-        dotnet build --no-restore
-        dotnet test --no-build --verbosity normal
+    - name: Cache NuGet packages
+      uses: actions/cache@v5
+      with:
+        path: ~/.nuget/packages
+        key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
+        restore-keys: |
+          ${{ runner.os }}-nuget-
     - name: Cache SonarQube packages
       uses: actions/cache@v5
       with:
-        path: ~\sonar\cache
+        path: ~/.sonar/cache
         key: ${{ runner.os }}-sonar
-        restore-keys: ${{ runner.os }}-sonar
-    - name: Cache SonarQube scanner
-      id: cache-sonar-scanner
-      uses: actions/cache@v5
-      with:
-        path: .\.sonar\scanner
-        key: ${{ runner.os }}-sonar-scanner
-        restore-keys: ${{ runner.os }}-sonar-scanner
     - name: Install SonarQube scanner
-      if: steps.cache-sonar-scanner.outputs.cache-hit != 'true'
-      shell: powershell
-      run: |
-        New-Item -Path .\.sonar\scanner -ItemType Directory
-        dotnet tool update dotnet-sonarscanner --tool-path .\.sonar\scanner
+      run:
+        dotnet tool update --global dotnet-sonarscanner
     - name: Build and analyze
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      shell: powershell
       run: |
         dotnet restore
-        .\.sonar\scanner\dotnet-sonarscanner begin /k:"example" /d:sonar.login="${{ secrets.SONAR_TOKEN }}"
+        dotnet-sonarscanner begin /k:"feelitbreak_MiddleProject" /o:"feelitbreak" /d:sonar.token="${{ secrets.SONAR_TOKEN }}"
         dotnet build --no-restore
         dotnet test --no-build --verbosity normal
-        .\.sonar\scanner\dotnet-sonarscanner end /d:sonar.login="${{ secrets.SONAR_TOKEN }}"
+        dotnet-sonarscanner end /d:sonar.token="${{ secrets.SONAR_TOKEN }}"
