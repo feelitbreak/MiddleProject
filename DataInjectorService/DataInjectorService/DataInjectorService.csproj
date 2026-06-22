@@ -11,11 +11,11 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
     <TreatWarningsAsErrors>True</TreatWarningsAsErrors>
-    <NoWarn>1701;1702;SA1633;SA1600;SA0001</NoWarn>
+    <NoWarn>1701;1702;SA1633;SA1600;SA0001;SA1010</NoWarn>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
     <TreatWarningsAsErrors>True</TreatWarningsAsErrors>
-    <NoWarn>1701;1702;SA1633;SA1600;SA0001</NoWarn>
+    <NoWarn>1701;1702;SA1633;SA1600;SA0001;SA1010</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>

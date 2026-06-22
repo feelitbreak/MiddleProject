@@ -4,6 +4,8 @@ using DataInjectorService.Extensions;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.Services.AddCorsConfiguration(builder.Configuration);
+
 builder.Services.AddControllers();
 
 builder.Services.AddSwaggerGenConfiguration();
@@ -18,6 +20,8 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+app.UseCors("AllowOrigins");
 
 app.UseAuthorization();
 
