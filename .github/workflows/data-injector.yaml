@@ -1,6 +1,12 @@
 name: Data Injector Service - Build & Publish
 
-on: [push]
+on:
+  push:
+    paths:
+      - 'DataInjectorService/**'
+  pull_request:
+    paths:
+      - 'DataInjectorService/**'
 
 jobs:
   build:
