@@ -1,6 +1,11 @@
 name: 'middle_project'
 
 services:
+  weak_app:
+    container_name: weak_app
+    image: feelitbreak/middle_project:weak-app
+    ports:
+      - 8080:8080
   data_injector:
     container_name: data_injector
     image: feelitbreak/middle_project:data-injector-service
