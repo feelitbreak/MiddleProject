@@ -88,6 +88,19 @@
           "legendFormat": "heap size"
         }
       ]
+    },
+    {
+      "id": 7,
+      "title": "WeakApp requests: success vs failure (rate)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 24 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "sum(rate(data_injector_weakapp_requests_total[5m])) by (outcome)",
+          "legendFormat": "{{outcome}}"
+        }
+      ]
     }
   ]
 }

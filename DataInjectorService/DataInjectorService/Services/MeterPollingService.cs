@@ -48,6 +48,13 @@ public sealed class MeterPollingService(
             try
             {
                 var result = await weakAppService.GetMetersAsync(stoppingToken);
+                metrics.WeakAppRequests.Add(
+                    1,
+                    new KeyValuePair<string, object?>(
+                        "outcome",
+                        result.IsSuccess ? "success" : "failure"
+                    )
+                );
                 nextDelay = result.IsSuccess
                     ? await this.PublishReadingsAsync(result.Value, stoppingToken)
                     : this.HandleFailure(result.Error, nextDelay);
@@ -73,11 +80,6 @@ public sealed class MeterPollingService(
 
     private TimeSpan HandleFailure(Error error, TimeSpan defaultDelay)
     {
-        metrics.WeakAppPollFailures.Add(
-            1,
-            new KeyValuePair<string, object?>("error_code", error.Code.ToString())
-        );
-
         if (error.Code == ErrorCode.RateLimited && error.RetryAfter.HasValue)
         {
             logger.RateLimited(error.RetryAfter.Value.TotalSeconds);

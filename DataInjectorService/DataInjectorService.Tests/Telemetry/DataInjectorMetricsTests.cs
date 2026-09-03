@@ -13,7 +13,7 @@ public sealed class DataInjectorMetricsTests
         Assert.NotNull(metrics.KafkaMessagesProduced);
         Assert.NotNull(metrics.KafkaMessagesFailed);
         Assert.NotNull(metrics.MeterReadingsPolled);
-        Assert.NotNull(metrics.WeakAppPollFailures);
+        Assert.NotNull(metrics.WeakAppRequests);
         Assert.NotNull(metrics.PollingCycleDuration);
         Assert.NotNull(metrics.KafkaProduceDuration);
     }

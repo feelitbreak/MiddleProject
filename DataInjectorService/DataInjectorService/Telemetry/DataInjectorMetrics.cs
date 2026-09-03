@@ -37,10 +37,10 @@ public sealed class DataInjectorMetrics : IDisposable
             description: "Number of meter readings fetched from WeakApp."
         );
 
-        this.WeakAppPollFailures = this.meter.CreateCounter<long>(
-            "data_injector.weakapp.poll_failures",
-            unit: "{failure}",
-            description: "Number of failed WeakApp poll attempts, tagged by error code."
+        this.WeakAppRequests = this.meter.CreateCounter<long>(
+            "data_injector.weakapp.requests",
+            unit: "{request}",
+            description: "Number of WeakApp poll requests, tagged by outcome (success/failure)."
         );
 
         this.PollingCycleDuration = this.meter.CreateHistogram<double>(
@@ -65,8 +65,8 @@ public sealed class DataInjectorMetrics : IDisposable
     /// <summary>Number of meter readings fetched from WeakApp.</summary>
     public Counter<long> MeterReadingsPolled { get; }
 
-    /// <summary>Number of failed WeakApp poll attempts, tagged by error code.</summary>
-    public Counter<long> WeakAppPollFailures { get; }
+    /// <summary>Number of WeakApp poll requests, tagged by outcome (success/failure).</summary>
+    public Counter<long> WeakAppRequests { get; }
 
     /// <summary>Duration, in seconds, of a full poll+publish cycle.</summary>
     public Histogram<double> PollingCycleDuration { get; }
