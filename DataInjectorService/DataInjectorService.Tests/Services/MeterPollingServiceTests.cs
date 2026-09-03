@@ -8,6 +8,7 @@ using DataInjectorService.Telemetry;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Moq;
+using System.Diagnostics.Metrics;
 
 /// <summary>
 /// Tests the <see cref="MeterPollingService"/> polling loop behaviour across all
@@ -153,6 +154,95 @@ public sealed class MeterPollingServiceTests
         );
     }
 
+    [Fact]
+    public async Task ExecuteAsync_Success_RecordsSuccessOutcome()
+    {
+        var serviceMock = new Mock<IWeakAppService>();
+        var producerMock = new Mock<IKafkaProducer>();
+        using var cts = new CancellationTokenSource();
+        using var metrics = new DataInjectorMetrics();
+        var outcomes = CaptureWeakAppRequestOutcomes(metrics);
+
+        SetupSequenceWithCancel(
+            serviceMock,
+            cts,
+            Result.Success<IReadOnlyList<MeterReading>>([MakeReading()])
+        );
+
+        producerMock
+            .Setup(p => p.ProduceAsync(It.IsAny<MeterReading>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        var service = BuildService(serviceMock.Object, producerMock.Object, metrics: metrics);
+        await service.StartAsync(TestContext.Current.CancellationToken);
+        await Task.Delay(200, TestContext.Current.CancellationToken);
+        await service.StopAsync(TestContext.Current.CancellationToken);
+
+        // SetupSequenceWithCancel always appends one more failing call to stop the loop, so a
+        // trailing "failure" is expected here — the point is that the configured result recorded
+        // "success" first.
+        Assert.Equal("success", outcomes[0]);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_Failure_RecordsFailureOutcome()
+    {
+        var serviceMock = new Mock<IWeakAppService>();
+        var producerMock = new Mock<IKafkaProducer>();
+        using var cts = new CancellationTokenSource();
+        using var metrics = new DataInjectorMetrics();
+        var outcomes = CaptureWeakAppRequestOutcomes(metrics);
+
+        SetupSequenceWithCancel(
+            serviceMock,
+            cts,
+            Result.Failure<IReadOnlyList<MeterReading>>(Error.Failed)
+        );
+
+        var service = BuildService(serviceMock.Object, producerMock.Object, metrics: metrics);
+        await service.StartAsync(TestContext.Current.CancellationToken);
+        await Task.Delay(200, TestContext.Current.CancellationToken);
+        await service.StopAsync(TestContext.Current.CancellationToken);
+
+        Assert.Contains("failure", outcomes);
+        Assert.DoesNotContain("success", outcomes);
+    }
+
+    /// <summary>
+    /// Attaches a <see cref="MeterListener"/> to <paramref name="metrics"/>'s meter and returns
+    /// the list of <c>outcome</c> tag values recorded against <see cref="DataInjectorMetrics.WeakAppRequests"/>.
+    /// </summary>
+    private static List<string> CaptureWeakAppRequestOutcomes(DataInjectorMetrics metrics)
+    {
+        var outcomes = new List<string>();
+        var listener = new MeterListener();
+
+        listener.InstrumentPublished = (instrument, meterListener) =>
+        {
+            if (instrument.Meter.Name == DataInjectorMetrics.MeterName)
+            {
+                meterListener.EnableMeasurementEvents(instrument);
+            }
+        };
+
+        listener.SetMeasurementEventCallback<long>(
+            (instrument, measurement, tags, _) =>
+            {
+                if (instrument == metrics.WeakAppRequests)
+                {
+                    var outcome = tags.ToArray().First(t => t.Key == "outcome").Value?.ToString();
+                    if (outcome is not null)
+                    {
+                        outcomes.Add(outcome);
+                    }
+                }
+            }
+        );
+
+        listener.Start();
+        return outcomes;
+    }
+
     /// <summary>
     /// Configures the mock to return the given results in order, then cancel
     /// <paramref name="cts"/> and return a failure so the polling loop exits cleanly.
@@ -182,7 +272,8 @@ public sealed class MeterPollingServiceTests
     private static MeterPollingService BuildService(
         IWeakAppService weakAppService,
         IKafkaProducer kafkaProducer,
-        WeakAppOptions? options = null
+        WeakAppOptions? options = null,
+        DataInjectorMetrics? metrics = null
     )
     {
         var opts = Options.Create(options ?? new WeakAppOptions { PollingIntervalSeconds = 0 });
@@ -191,7 +282,7 @@ public sealed class MeterPollingServiceTests
             kafkaProducer,
             opts,
             NullLogger<MeterPollingService>.Instance,
-            new DataInjectorMetrics()
+            metrics ?? new DataInjectorMetrics()
         );
     }
 
