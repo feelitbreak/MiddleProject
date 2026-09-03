@@ -11,20 +11,23 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
     <TreatWarningsAsErrors>True</TreatWarningsAsErrors>
-    <NoWarn>1701;1702;SA1633;SA1600;SA0001;SA1010</NoWarn>
+    <NoWarn>1701;1702</NoWarn>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
     <TreatWarningsAsErrors>True</TreatWarningsAsErrors>
-    <NoWarn>1701;1702;SA1633;SA1600;SA0001;SA1010</NoWarn>
+    <NoWarn>1701;1702</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.8" />
-    <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.23.0" />
-    <PackageReference Include="StyleCop.Analyzers" Version="1.1.118">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-    </PackageReference>
-    <PackageReference Include="Swashbuckle.AspNetCore" Version="10.1.7" />
+    <PackageReference Include="Confluent.Kafka" Version="2.15.0" />
+    <PackageReference Include="Microsoft.Extensions.Http.Resilience" Version="10.9.0" />
+    <PackageReference Include="Microsoft.OpenApi" Version="3.10.2" />
+    <PackageReference
+      Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets"
+      Version="1.23.0"
+    />
+    <PackageReference Include="Serilog.AspNetCore" Version="10.0.0" />
+    <PackageReference Include="Serilog.Sinks.Console" Version="6.1.1" />
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="10.2.3" />
   </ItemGroup>
 </Project>
