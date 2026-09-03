@@ -1,6 +1,7 @@
 using DataInjectorService.Extensions;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Serilog;
+using System.Diagnostics.CodeAnalysis;
 
 Log.Logger = new LoggerConfiguration().WriteTo.Console().CreateBootstrapLogger();
 
@@ -75,3 +76,10 @@ finally
 {
     await Log.CloseAndFlushAsync();
 }
+
+/// <summary>
+/// Entry point marker for the top-level statements above. Excluded from coverage:
+/// this file is composition-root wiring, exercised end-to-end rather than by unit tests.
+/// </summary>
+[ExcludeFromCodeCoverage]
+public static partial class Program { }

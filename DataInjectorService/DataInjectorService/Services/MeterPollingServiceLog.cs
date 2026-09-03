@@ -1,6 +1,7 @@
 namespace DataInjectorService.Services;
 
 using DataInjectorService.Common;
+using System.Diagnostics.CodeAnalysis;
 
 /// <summary>
 /// Log helper methods for <see cref="MeterPollingService"/>.
@@ -8,6 +9,7 @@ using DataInjectorService.Common;
 /// eliminating the CA1873 "possibly unnecessary argument evaluation" warning without requiring
 /// source generation or partial methods.
 /// </summary>
+[ExcludeFromCodeCoverage]
 internal static class MeterPollingServiceLog
 {
     internal static void ServiceStarted(this ILogger<MeterPollingService> logger, int interval)

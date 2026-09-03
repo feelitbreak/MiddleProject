@@ -2,11 +2,13 @@
 
 using DataInjectorService.Configuration;
 using DataInjectorService.Services;
+using System.Diagnostics.CodeAnalysis;
 
 /// <summary>
 /// <see cref="IServiceCollection"/> extension methods that keep <c>Program.cs</c>
 /// declarative and free of registration boilerplate.
 /// </summary>
+[ExcludeFromCodeCoverage]
 public static class Extensions
 {
     /// <summary>Registers Swagger/OpenAPI generation for the service.</summary>

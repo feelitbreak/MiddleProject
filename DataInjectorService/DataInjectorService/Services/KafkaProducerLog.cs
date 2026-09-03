@@ -1,11 +1,14 @@
 namespace DataInjectorService.Services;
 
+using System.Diagnostics.CodeAnalysis;
+
 /// <summary>
 /// Log helper methods for <see cref="KafkaProducer"/>.
 /// Each method guards with <see cref="ILogger.IsEnabled"/> before constructing any arguments,
 /// eliminating the CA1873 "possibly unnecessary argument evaluation" warning without requiring
 /// source generation or partial methods.
 /// </summary>
+[ExcludeFromCodeCoverage]
 internal static class KafkaProducerLog
 {
     internal static void ProducerInitialised(

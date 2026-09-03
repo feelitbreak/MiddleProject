@@ -100,7 +100,8 @@ public sealed class WeakAppServiceTests
     {
         var response = Json(HttpStatusCode.TooManyRequests, string.Empty);
         response.Headers.RetryAfter = new System.Net.Http.Headers.RetryConditionHeaderValue(
-            TimeSpan.FromSeconds(120));
+            TimeSpan.FromSeconds(120)
+        );
 
         var service = BuildService(response);
 
@@ -129,7 +130,8 @@ public sealed class WeakAppServiceTests
     public async Task GetMetersAsync_NetworkException_ReturnsFailure()
     {
         var service = BuildServiceWithThrowingHandler(
-            new HttpRequestException("connection refused"));
+            new HttpRequestException("connection refused")
+        );
 
         var result = await service.GetMetersAsync(CancellationToken.None);
 
@@ -145,19 +147,70 @@ public sealed class WeakAppServiceTests
 
         var service = BuildService(Json(HttpStatusCode.OK, "[]"));
 
-        await Assert.ThrowsAnyAsync<OperationCanceledException>(
-            () => service.GetMetersAsync(cts.Token));
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+            service.GetMetersAsync(cts.Token)
+        );
+    }
+
+    [Fact]
+    public async Task IsHealthyAsync_SuccessStatus_ReturnsTrue()
+    {
+        var service = BuildService(Json(HttpStatusCode.OK, """{"status":"ok"}"""));
+
+        var healthy = await service.IsHealthyAsync(TestContext.Current.CancellationToken);
+
+        Assert.True(healthy);
+    }
+
+    [Theory]
+    [InlineData(HttpStatusCode.NotFound)]
+    [InlineData(HttpStatusCode.InternalServerError)]
+    [InlineData(HttpStatusCode.ServiceUnavailable)]
+    public async Task IsHealthyAsync_NonSuccessStatus_ReturnsFalse(HttpStatusCode status)
+    {
+        var service = BuildService(Json(status, string.Empty));
+
+        var healthy = await service.IsHealthyAsync(TestContext.Current.CancellationToken);
+
+        Assert.False(healthy);
+    }
+
+    [Fact]
+    public async Task IsHealthyAsync_NetworkException_ReturnsFalse()
+    {
+        var service = BuildServiceWithThrowingHandler(
+            new HttpRequestException("connection refused")
+        );
+
+        var healthy = await service.IsHealthyAsync(TestContext.Current.CancellationToken);
+
+        Assert.False(healthy);
+    }
+
+    [Fact]
+    public async Task IsHealthyAsync_HostCancellation_PropagatesCancellation()
+    {
+        using var cts = new CancellationTokenSource();
+        await cts.CancelAsync();
+
+        var service = BuildService(Json(HttpStatusCode.OK, string.Empty));
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+            service.IsHealthyAsync(cts.Token)
+        );
     }
 
     private static WeakAppService BuildService(HttpResponseMessage response)
     {
         var factory = new StubHttpClientFactory(new MockHttpMessageHandler(response));
-        var opts = Options.Create(new WeakAppOptions
-        {
-            BaseUrl = "http://weak-app-test",
-            ApiKey = "some-secret",
-            RateLimitDelaySeconds = 60,
-        });
+        var opts = Options.Create(
+            new WeakAppOptions
+            {
+                BaseUrl = "http://weak-app-test",
+                ApiKey = "some-secret",
+                RateLimitDelaySeconds = 60,
+            }
+        );
 
         return new WeakAppService(factory, opts, NullLogger<WeakAppService>.Instance);
     }
@@ -165,10 +218,7 @@ public sealed class WeakAppServiceTests
     private static WeakAppService BuildServiceWithThrowingHandler(Exception exception)
     {
         var factory = new StubHttpClientFactory(new ThrowingHttpMessageHandler(exception));
-        var opts = Options.Create(new WeakAppOptions
-        {
-            BaseUrl = "http://weak-app-test",
-        });
+        var opts = Options.Create(new WeakAppOptions { BaseUrl = "http://weak-app-test" });
 
         return new WeakAppService(factory, opts, NullLogger<WeakAppService>.Instance);
     }
@@ -197,7 +247,8 @@ internal sealed class MockHttpMessageHandler(HttpResponseMessage response) : Htt
     /// <inheritdoc/>
     protected override Task<HttpResponseMessage> SendAsync(
         HttpRequestMessage request,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         cancellationToken.ThrowIfCancellationRequested();
         return Task.FromResult(response);
@@ -210,6 +261,6 @@ internal sealed class ThrowingHttpMessageHandler(Exception exception) : HttpMess
     /// <inheritdoc/>
     protected override Task<HttpResponseMessage> SendAsync(
         HttpRequestMessage request,
-        CancellationToken cancellationToken) =>
-        throw exception;
+        CancellationToken cancellationToken
+    ) => throw exception;
 }

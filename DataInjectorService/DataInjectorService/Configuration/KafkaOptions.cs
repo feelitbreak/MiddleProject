@@ -1,9 +1,12 @@
 namespace DataInjectorService.Configuration;
 
+using System.Diagnostics.CodeAnalysis;
+
 /// <summary>
 /// Strongly-typed configuration for the Kafka producer.
 /// Bound from the "Kafka" section in appsettings / environment variables.
 /// </summary>
+[ExcludeFromCodeCoverage]
 public sealed class KafkaOptions
 {
     public const string SectionName = "Kafka";

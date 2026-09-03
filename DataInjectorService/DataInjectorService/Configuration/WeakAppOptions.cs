@@ -1,9 +1,12 @@
 namespace DataInjectorService.Configuration;
 
+using System.Diagnostics.CodeAnalysis;
+
 /// <summary>
 /// Strongly-typed configuration for the WeakApp external API client.
 /// Bound from the "WeakApp" section in appsettings / environment variables.
 /// </summary>
+[ExcludeFromCodeCoverage]
 public sealed class WeakAppOptions
 {
     public const string SectionName = "WeakApp";
