@@ -1,10 +1,10 @@
 namespace DataInjectorService.Services;
 
-using System.Text.Json;
 using Confluent.Kafka;
 using DataInjectorService.Configuration;
 using DataInjectorService.Models;
 using Microsoft.Extensions.Options;
+using System.Text.Json;
 
 /// <summary>
 /// Kafka producer wrapper that serializes <see cref="MeterReading"/> objects to JSON

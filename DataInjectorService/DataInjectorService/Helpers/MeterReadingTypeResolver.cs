@@ -1,7 +1,7 @@
 namespace DataInjectorService.Helpers;
 
-using System.Text.Json;
 using DataInjectorService.Models;
+using System.Text.Json;
 
 /// <summary>
 /// Resolves the polymorphic <see cref="IMeterPayload"/> on a <see cref="MeterReading"/> once

@@ -1,12 +1,12 @@
 namespace DataInjectorService.Services;
 
-using System.Net;
-using System.Text.Json;
 using DataInjectorService.Common;
 using DataInjectorService.Configuration;
 using DataInjectorService.Helpers;
 using DataInjectorService.Models;
 using Microsoft.Extensions.Options;
+using System.Net;
+using System.Text.Json;
 
 /// <summary>
 /// Calls the WeakApp external API and maps every documented response variant to a

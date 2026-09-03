@@ -1,8 +1,8 @@
 namespace DataInjectorService.Models;
 
+using DataInjectorService.Helpers;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using DataInjectorService.Helpers;
 
 /// <summary>
 /// Represents a single meter reading returned by the WeakApp /meters endpoint.
