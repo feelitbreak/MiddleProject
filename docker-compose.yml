@@ -13,6 +13,7 @@ services:
       - ASPNETCORE_ENVIRONMENT=Development
       - Kafka__BootstrapServers=kafka:29092
       - WeakApp__BaseUrl=http://weak_app:8080
+      - WeakApp__ApiKey=supersecret
     ports:
       - 8082:8080
       - 8083:8081
