@@ -11,9 +11,14 @@ services:
     image: feelitbreak/middle_project:data-injector-service
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
+      - Kafka__BootstrapServers=kafka:29092
+      - WeakApp__BaseUrl=http://weak_app:8080
     ports:
       - 8082:8080
       - 8083:8081
+    depends_on:
+      - kafka
+      - weak_app
   kafka:
     image: apache/kafka:latest
     hostname: kafka
