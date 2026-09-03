@@ -3,7 +3,9 @@ namespace DataInjectorService.Services;
 using DataInjectorService.Common;
 using DataInjectorService.Configuration;
 using DataInjectorService.Models;
+using DataInjectorService.Telemetry;
 using Microsoft.Extensions.Options;
+using System.Diagnostics;
 
 /// <summary>
 /// Long-running background service that polls the WeakApp <c>/meters</c> endpoint on a
@@ -22,11 +24,13 @@ using Microsoft.Extensions.Options;
 /// <param name="kafkaProducer">Producer for publishing readings to Kafka.</param>
 /// <param name="options">WeakApp configuration options.</param>
 /// <param name="logger">Logger instance.</param>
+/// <param name="metrics">Business metrics recorder.</param>
 public sealed class MeterPollingService(
     IWeakAppService weakAppService,
     IKafkaProducer kafkaProducer,
     IOptions<WeakAppOptions> options,
-    ILogger<MeterPollingService> logger
+    ILogger<MeterPollingService> logger,
+    DataInjectorMetrics metrics
 ) : BackgroundService
 {
     private readonly WeakAppOptions options = options.Value;
@@ -39,6 +43,7 @@ public sealed class MeterPollingService(
         while (!stoppingToken.IsCancellationRequested)
         {
             var nextDelay = TimeSpan.FromSeconds(this.options.PollingIntervalSeconds);
+            var stopwatch = Stopwatch.StartNew();
 
             try
             {
@@ -55,6 +60,10 @@ public sealed class MeterPollingService(
             {
                 logger.UnhandledPollingException(ex);
             }
+            finally
+            {
+                metrics.PollingCycleDuration.Record(stopwatch.Elapsed.TotalSeconds);
+            }
 
             await SafeDelayAsync(nextDelay, stoppingToken);
         }
@@ -64,6 +73,11 @@ public sealed class MeterPollingService(
 
     private TimeSpan HandleFailure(Error error, TimeSpan defaultDelay)
     {
+        metrics.WeakAppPollFailures.Add(
+            1,
+            new KeyValuePair<string, object?>("error_code", error.Code.ToString())
+        );
+
         if (error.Code == ErrorCode.RateLimited && error.RetryAfter.HasValue)
         {
             logger.RateLimited(error.RetryAfter.Value.TotalSeconds);
@@ -101,10 +115,12 @@ public sealed class MeterPollingService(
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 logger.ProduceFailed(ex, reading.Type, reading.Name);
+                metrics.KafkaMessagesFailed.Add(1);
                 failed++;
             }
         }
 
+        metrics.MeterReadingsPolled.Add(readings.Count);
         logger.CycleComplete(published, failed, readings.Count);
         return TimeSpan.FromSeconds(this.options.PollingIntervalSeconds);
     }

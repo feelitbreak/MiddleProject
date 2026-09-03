@@ -46,6 +46,7 @@ public static class Program
             builder.Services.AddSwaggerGenConfiguration();
             builder.Services.AddDataInjectorServices(builder.Configuration);
             builder.Services.AddHealthCheckConfiguration();
+            builder.Services.AddObservability();
 
             var app = builder.Build();
 
@@ -59,6 +60,9 @@ public static class Program
             app.UseCors("AllowOrigins");
             app.UseAuthorization();
             app.MapControllers();
+
+            // Local/dev only: not restricted to internal networks here.
+            app.MapPrometheusScrapingEndpoint();
 
             // Liveness: the service process is up.
             app.MapHealthChecks(

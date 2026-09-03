@@ -4,6 +4,7 @@ using DataInjectorService.Common;
 using DataInjectorService.Configuration;
 using DataInjectorService.Models;
 using DataInjectorService.Services;
+using DataInjectorService.Telemetry;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Moq;
@@ -26,10 +27,7 @@ public sealed class MeterPollingServiceTests
         var producerMock = new Mock<IKafkaProducer>();
         using var cts = new CancellationTokenSource();
 
-        SetupSequenceWithCancel(
-            serviceMock,
-            cts,
-            Result.Success(readings[0]));
+        SetupSequenceWithCancel(serviceMock, cts, Result.Success(readings[0]));
 
         producerMock
             .Setup(p => p.ProduceAsync(It.IsAny<MeterReading>(), It.IsAny<CancellationToken>()))
@@ -42,7 +40,8 @@ public sealed class MeterPollingServiceTests
 
         producerMock.Verify(
             p => p.ProduceAsync(It.IsAny<MeterReading>(), It.IsAny<CancellationToken>()),
-            Times.Exactly(readings[0].Count));
+            Times.Exactly(readings[0].Count)
+        );
     }
 
     [Fact]
@@ -55,7 +54,8 @@ public sealed class MeterPollingServiceTests
         SetupSequenceWithCancel(
             serviceMock,
             cts,
-            Result.Failure<IReadOnlyList<MeterReading>>(Error.Failed));
+            Result.Failure<IReadOnlyList<MeterReading>>(Error.Failed)
+        );
 
         var service = BuildService(serviceMock.Object, producerMock.Object);
         await service.StartAsync(TestContext.Current.CancellationToken);
@@ -64,7 +64,8 @@ public sealed class MeterPollingServiceTests
 
         producerMock.Verify(
             p => p.ProduceAsync(It.IsAny<MeterReading>(), It.IsAny<CancellationToken>()),
-            Times.Never);
+            Times.Never
+        );
     }
 
     [Fact]
@@ -78,7 +79,9 @@ public sealed class MeterPollingServiceTests
             serviceMock,
             cts,
             Result.Failure<IReadOnlyList<MeterReading>>(
-                Error.CreateRateLimited(TimeSpan.FromMilliseconds(10))));
+                Error.CreateRateLimited(TimeSpan.FromMilliseconds(10))
+            )
+        );
 
         var service = BuildService(serviceMock.Object, producerMock.Object);
         await service.StartAsync(TestContext.Current.CancellationToken);
@@ -87,7 +90,8 @@ public sealed class MeterPollingServiceTests
 
         producerMock.Verify(
             p => p.ProduceAsync(It.IsAny<MeterReading>(), It.IsAny<CancellationToken>()),
-            Times.Never);
+            Times.Never
+        );
     }
 
     [Fact]
@@ -102,7 +106,8 @@ public sealed class MeterPollingServiceTests
             serviceMock,
             cts,
             Result.Failure<IReadOnlyList<MeterReading>>(Error.Failed),
-            Result.Success<IReadOnlyList<MeterReading>>([reading]));
+            Result.Success<IReadOnlyList<MeterReading>>([reading])
+        );
 
         producerMock
             .Setup(p => p.ProduceAsync(It.IsAny<MeterReading>(), It.IsAny<CancellationToken>()))
@@ -115,21 +120,23 @@ public sealed class MeterPollingServiceTests
 
         producerMock.Verify(
             p => p.ProduceAsync(It.IsAny<MeterReading>(), It.IsAny<CancellationToken>()),
-            Times.Once);
+            Times.Once
+        );
     }
 
     [Fact]
     public async Task ExecuteAsync_KafkaFails_ServiceKeepsRunning()
     {
-        IReadOnlyList<MeterReading> readings = [MakeReading("energy", "A"), MakeReading("energy", "B")];
+        IReadOnlyList<MeterReading> readings =
+        [
+            MakeReading("energy", "A"),
+            MakeReading("energy", "B"),
+        ];
         var serviceMock = new Mock<IWeakAppService>();
         var producerMock = new Mock<IKafkaProducer>();
         using var cts = new CancellationTokenSource();
 
-        SetupSequenceWithCancel(
-            serviceMock,
-            cts,
-            Result.Success(readings));
+        SetupSequenceWithCancel(serviceMock, cts, Result.Success(readings));
 
         producerMock
             .Setup(p => p.ProduceAsync(It.IsAny<MeterReading>(), It.IsAny<CancellationToken>()))
@@ -142,7 +149,8 @@ public sealed class MeterPollingServiceTests
 
         producerMock.Verify(
             p => p.ProduceAsync(It.IsAny<MeterReading>(), It.IsAny<CancellationToken>()),
-            Times.Exactly(readings.Count));
+            Times.Exactly(readings.Count)
+        );
     }
 
     /// <summary>
@@ -152,10 +160,12 @@ public sealed class MeterPollingServiceTests
     private static void SetupSequenceWithCancel(
         Mock<IWeakAppService> serviceMock,
         CancellationTokenSource cts,
-        params Result<IReadOnlyList<MeterReading>>[] results)
+        params Result<IReadOnlyList<MeterReading>>[] results
+    )
     {
-        var sequence = serviceMock.SetupSequence(
-            s => s.GetMetersAsync(It.IsAny<CancellationToken>()));
+        var sequence = serviceMock.SetupSequence(s =>
+            s.GetMetersAsync(It.IsAny<CancellationToken>())
+        );
 
         foreach (var result in results)
         {
@@ -172,16 +182,24 @@ public sealed class MeterPollingServiceTests
     private static MeterPollingService BuildService(
         IWeakAppService weakAppService,
         IKafkaProducer kafkaProducer,
-        WeakAppOptions? options = null)
+        WeakAppOptions? options = null
+    )
     {
         var opts = Options.Create(options ?? new WeakAppOptions { PollingIntervalSeconds = 0 });
         return new MeterPollingService(
             weakAppService,
             kafkaProducer,
             opts,
-            NullLogger<MeterPollingService>.Instance);
+            NullLogger<MeterPollingService>.Instance,
+            new DataInjectorMetrics()
+        );
     }
 
     private static MeterReading MakeReading(string type = "energy", string name = "Hall") =>
-        new() { Type = type, Name = name, Payload = new EnergyPayload { Energy = 100 } };
+        new()
+        {
+            Type = type,
+            Name = name,
+            Payload = new EnergyPayload { Energy = 100 },
+        };
 }

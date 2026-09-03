@@ -3,7 +3,9 @@ namespace DataInjectorService.Services;
 using Confluent.Kafka;
 using DataInjectorService.Configuration;
 using DataInjectorService.Models;
+using DataInjectorService.Telemetry;
 using Microsoft.Extensions.Options;
+using System.Diagnostics;
 using System.Text.Json;
 
 /// <summary>
@@ -20,15 +22,22 @@ public sealed class KafkaProducer : IKafkaProducer
     private readonly IProducer<string, string> producer;
     private readonly string topic;
     private readonly ILogger<KafkaProducer> logger;
+    private readonly DataInjectorMetrics metrics;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="KafkaProducer"/> class.
     /// </summary>
     /// <param name="options">Kafka configuration options.</param>
     /// <param name="logger">Logger instance.</param>
-    public KafkaProducer(IOptions<KafkaOptions> options, ILogger<KafkaProducer> logger)
+    /// <param name="metrics">Business metrics recorder.</param>
+    public KafkaProducer(
+        IOptions<KafkaOptions> options,
+        ILogger<KafkaProducer> logger,
+        DataInjectorMetrics metrics
+    )
     {
         this.logger = logger;
+        this.metrics = metrics;
         var kafkaOptions = options.Value;
         this.topic = kafkaOptions.MeterReadingsTopic;
 
@@ -61,7 +70,10 @@ public sealed class KafkaProducer : IKafkaProducer
 
         var message = new Message<string, string> { Key = key, Value = value };
 
+        var stopwatch = Stopwatch.StartNew();
         var result = await this.producer.ProduceAsync(this.topic, message, cancellationToken);
+        this.metrics.KafkaProduceDuration.Record(stopwatch.Elapsed.TotalSeconds);
+        this.metrics.KafkaMessagesProduced.Add(1);
 
         this.logger.ReadingPublished(
             result.Topic,

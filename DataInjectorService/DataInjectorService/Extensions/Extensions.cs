@@ -2,7 +2,11 @@
 
 using DataInjectorService.Configuration;
 using DataInjectorService.Services;
+using DataInjectorService.Telemetry;
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Resources;
 using System.Diagnostics.CodeAnalysis;
+using System.Reflection;
 
 /// <summary>
 /// <see cref="IServiceCollection"/> extension methods that keep <c>Program.cs</c>
@@ -141,5 +145,34 @@ public static class Extensions
     public static void AddHealthCheckConfiguration(this IServiceCollection services)
     {
         services.AddHealthChecks().AddCheck<WeakAppHealthCheck>("weakapp", tags: ["ready"]);
+    }
+
+    /// <summary>
+    /// Registers the custom <see cref="DataInjectorMetrics"/> meter along with ASP.NET Core,
+    /// HttpClient and runtime instrumentation, exported for Prometheus to scrape.
+    /// </summary>
+    /// <param name="services">The service collection.</param>
+    public static void AddObservability(this IServiceCollection services)
+    {
+        services.AddSingleton<DataInjectorMetrics>();
+
+        var serviceVersion = Assembly.GetExecutingAssembly().GetName().Version?.ToString();
+
+        services
+            .AddOpenTelemetry()
+            .ConfigureResource(resource =>
+                resource.AddService(
+                    serviceName: "data-injector-service",
+                    serviceVersion: serviceVersion
+                )
+            )
+            .WithMetrics(metrics =>
+                metrics
+                    .AddAspNetCoreInstrumentation()
+                    .AddHttpClientInstrumentation()
+                    .AddRuntimeInstrumentation()
+                    .AddMeter(DataInjectorMetrics.MeterName)
+                    .AddPrometheusExporter()
+            );
     }
 }

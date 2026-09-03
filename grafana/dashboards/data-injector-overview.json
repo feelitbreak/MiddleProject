@@ -1,0 +1,93 @@
+{
+  "title": "DataInjector Overview",
+  "uid": "data-injector-overview",
+  "editable": true,
+  "timezone": "browser",
+  "time": { "from": "now-1h", "to": "now" },
+  "refresh": "15s",
+  "schemaVersion": 39,
+  "panels": [
+    {
+      "id": 1,
+      "title": "HTTP server request rate",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "sum(rate(http_server_request_duration_seconds_count[5m])) by (http_route)",
+          "legendFormat": "{{http_route}}"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "WeakApp (HTTP client) p95 duration",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(http_client_request_duration_seconds_bucket[5m])) by (le))",
+          "legendFormat": "p95"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Kafka messages produced vs failed (rate)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "rate(data_injector_kafka_messages_produced_total[5m])",
+          "legendFormat": "produced"
+        },
+        {
+          "expr": "rate(data_injector_kafka_messages_failed_total[5m])",
+          "legendFormat": "failed"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Meter readings polled (rate)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "rate(data_injector_weakapp_readings_polled_total[5m])",
+          "legendFormat": "readings/s"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Polling cycle duration (p95)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(data_injector_polling_cycle_duration_seconds_bucket[5m])) by (le))",
+          "legendFormat": "p95"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "GC heap size",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 16 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "sum(dotnet_gc_last_collection_heap_size_bytes)",
+          "legendFormat": "heap size"
+        }
+      ]
+    }
+  ]
+}
