@@ -4,6 +4,7 @@ using Confluent.Kafka;
 using DataInjectorService.Configuration;
 using DataInjectorService.Models;
 using DataInjectorService.Services;
+using DataInjectorService.Telemetry;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using System.Text.Json;
@@ -168,7 +169,11 @@ public sealed class KafkaProducerIntegrationTests(KafkaContainerFixture fixture)
             }
         );
 
-        return new KafkaProducer(options, NullLogger<KafkaProducer>.Instance);
+        return new KafkaProducer(
+            options,
+            NullLogger<KafkaProducer>.Instance,
+            new DataInjectorMetrics()
+        );
     }
 
     /// <summary>

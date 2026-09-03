@@ -1,0 +1,17 @@
+# Prometheus scrape configuration for the Middle Project services.
+#
+# Pattern for adding a new service later: add a new job under scrape_configs
+# pointing at "<service_container_name>:<port>" with metrics_path "/metrics"
+# (assumes the service exposes an OpenTelemetry-Prometheus /metrics endpoint,
+# per the pattern established by DataInjectorService — see README.md).
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: data-injector-service
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["data_injector:8080"]
+        labels:
+          service: data-injector-service
