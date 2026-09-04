@@ -1,5 +1,8 @@
 namespace DataProcessorService.Domain.Enums;
 
+using System.Collections.Frozen;
+using System.Text.Json;
+
 /// <summary>
 /// Canonical string form of <see cref="SensorType"/>.
 /// <para>
@@ -8,45 +11,48 @@ namespace DataProcessorService.Domain.Enums;
 /// the <c>sensors.sensor_type</c> column and the <c>meter_readings</c> table-per-hierarchy
 /// discriminator use them.
 /// </para>
+/// <para>
+/// Both directions are derived from the enum itself rather than hand-maintained, so adding a
+/// sensor type means adding one enum member and nothing else.
+/// <see cref="JsonNamingPolicy.SnakeCaseLower"/> is used purely as a naming utility here --- it
+/// turns <c>AirQuality</c> into <c>air_quality</c> --- and the exact strings it produces are
+/// pinned by unit tests, since they are a storage format and cannot change silently.
+/// </para>
 /// </summary>
 public static class SensorTypeNames
 {
-    /// <summary>Wire and storage name of <see cref="SensorType.AirQuality"/>.</summary>
-    public const string AirQuality = "air_quality";
+    private static readonly FrozenDictionary<SensorType, string> NamesByType = Enum.GetValues<
+        SensorType
+    >()
+        .ToFrozenDictionary(
+            type => type,
+            type => JsonNamingPolicy.SnakeCaseLower.ConvertName(type.ToString())
+        );
 
-    /// <summary>Wire and storage name of <see cref="SensorType.Motion"/>.</summary>
-    public const string Motion = "motion";
-
-    /// <summary>Wire and storage name of <see cref="SensorType.Energy"/>.</summary>
-    public const string Energy = "energy";
+    private static readonly FrozenDictionary<string, SensorType> TypesByName =
+        NamesByType.ToFrozenDictionary(
+            pair => pair.Value,
+            pair => pair.Key,
+            StringComparer.Ordinal
+        );
 
     /// <summary>Converts a <see cref="SensorType"/> to its canonical string form.</summary>
     /// <param name="type">The sensor type.</param>
     /// <returns>The canonical string form.</returns>
     /// <exception cref="ArgumentOutOfRangeException">The value is not a known sensor type.</exception>
     public static string ToName(SensorType type) =>
-        type switch
-        {
-            SensorType.AirQuality => AirQuality,
-            SensorType.Motion => Motion,
-            SensorType.Energy => Energy,
-            _ => throw new ArgumentOutOfRangeException(nameof(type), type, "Unknown sensor type."),
-        };
+        NamesByType.TryGetValue(type, out var name)
+            ? name
+            : throw new ArgumentOutOfRangeException(nameof(type), type, "Unknown sensor type.");
 
-    /// <summary>
-    /// Converts a canonical string form back to a <see cref="SensorType"/>.
-    /// </summary>
+    /// <summary>Converts a canonical string form back to a <see cref="SensorType"/>.</summary>
     /// <param name="name">The canonical string form.</param>
     /// <returns>The matching sensor type.</returns>
     /// <exception cref="ArgumentOutOfRangeException">The value is not a known sensor type name.</exception>
     public static SensorType FromName(string name) =>
-        name switch
-        {
-            AirQuality => SensorType.AirQuality,
-            Motion => SensorType.Motion,
-            Energy => SensorType.Energy,
-            _ => throw new ArgumentOutOfRangeException(nameof(name), name, "Unknown sensor type."),
-        };
+        TryFromName(name, out var type)
+            ? type
+            : throw new ArgumentOutOfRangeException(nameof(name), name, "Unknown sensor type.");
 
     /// <summary>
     /// Attempts to convert a canonical string form back to a <see cref="SensorType"/>, without
@@ -58,20 +64,12 @@ public static class SensorTypeNames
     /// <returns><see langword="true"/> when <paramref name="name"/> is a known sensor type.</returns>
     public static bool TryFromName(string? name, out SensorType type)
     {
-        switch (name)
+        if (name is null)
         {
-            case AirQuality:
-                type = SensorType.AirQuality;
-                return true;
-            case Motion:
-                type = SensorType.Motion;
-                return true;
-            case Energy:
-                type = SensorType.Energy;
-                return true;
-            default:
-                type = default;
-                return false;
+            type = default;
+            return false;
         }
+
+        return TypesByName.TryGetValue(name, out type);
     }
 }

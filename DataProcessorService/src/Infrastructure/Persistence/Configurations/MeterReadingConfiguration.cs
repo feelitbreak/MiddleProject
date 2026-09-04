@@ -30,9 +30,9 @@ public sealed class MeterReadingConfiguration : IEntityTypeConfiguration<MeterRe
 
         builder
             .HasDiscriminator<string>(MeterReadingColumns.SensorType)
-            .HasValue<AirQualityReading>(SensorTypeNames.AirQuality)
-            .HasValue<MotionReading>(SensorTypeNames.Motion)
-            .HasValue<EnergyReading>(SensorTypeNames.Energy);
+            .HasValue<AirQualityReading>(SensorTypeNames.ToName(SensorType.AirQuality))
+            .HasValue<MotionReading>(SensorTypeNames.ToName(SensorType.Motion))
+            .HasValue<EnergyReading>(SensorTypeNames.ToName(SensorType.Energy));
 
         builder.Property<string>(MeterReadingColumns.SensorType).HasMaxLength(32);
 
