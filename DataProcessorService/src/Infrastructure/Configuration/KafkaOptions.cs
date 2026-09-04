@@ -1,0 +1,95 @@
+namespace DataProcessorService.Infrastructure.Configuration;
+
+using System.ComponentModel.DataAnnotations;
+using System.Diagnostics.CodeAnalysis;
+
+/// <summary>
+/// Strongly-typed configuration for the Kafka consumer and the dead-letter producer.
+/// Bound from the "Kafka" section in appsettings / environment variables.
+/// </summary>
+[ExcludeFromCodeCoverage]
+public sealed class KafkaOptions : IValidatableObject
+{
+    /// <summary>Configuration section this type binds from.</summary>
+    public const string SectionName = "Kafka";
+
+    /// <summary>Gets or sets the Kafka bootstrap servers (comma-separated).</summary>
+    [Required(AllowEmptyStrings = false)]
+    public string BootstrapServers { get; set; } = "localhost:9092";
+
+    /// <summary>Gets or sets the topic readings are consumed from.</summary>
+    [Required(AllowEmptyStrings = false)]
+    public string MeterReadingsTopic { get; set; } = "meter-readings";
+
+    /// <summary>
+    /// Gets or sets the topic messages are moved to when they can never be processed.
+    /// </summary>
+    [Required(AllowEmptyStrings = false)]
+    public string DeadLetterTopic { get; set; } = "meter-readings-dlq";
+
+    /// <summary>Gets or sets the consumer group identifier.</summary>
+    [Required(AllowEmptyStrings = false)]
+    public string ConsumerGroupId { get; set; } = "data-processor";
+
+    /// <summary>Gets or sets the maximum number of messages accumulated before a batch is written.</summary>
+    [Range(1, 10_000)]
+    public int MaxBatchSize { get; set; } = 500;
+
+    /// <summary>
+    /// Gets or sets how long to keep accumulating a partial batch before writing it anyway, in
+    /// milliseconds. Bounds end-to-end latency when the topic is quiet.
+    /// </summary>
+    [Range(10, 60_000)]
+    public int BatchLingerMs { get; set; } = 2_000;
+
+    /// <summary>
+    /// Gets or sets how many times a batch that failed transiently is retried before the whole
+    /// batch is dead-lettered.
+    /// <para>
+    /// Bounded on purpose. Retrying indefinitely means one misclassified permanent failure stops
+    /// the partition forever with nothing to alert on.
+    /// </para>
+    /// </summary>
+    [Range(1, 100)]
+    public int MaxBatchAttempts { get; set; } = 5;
+
+    /// <summary>Gets or sets the initial backoff between batch attempts, in milliseconds.</summary>
+    [Range(10, 60_000)]
+    public int RetryBaseDelayMs { get; set; } = 500;
+
+    /// <summary>Gets or sets the ceiling on the exponential backoff, in milliseconds.</summary>
+    [Range(100, 600_000)]
+    public int RetryMaxDelayMs { get; set; } = 30_000;
+
+    /// <summary>
+    /// Gets or sets the maximum interval between consumer polls, in milliseconds. Exceeding it
+    /// makes the broker consider this consumer dead and rebalance its partitions away.
+    /// </summary>
+    [Range(10_000, 3_600_000)]
+    public int MaxPollIntervalMs { get; set; } = 300_000;
+
+    /// <summary>Gets or sets the consumer session timeout, in milliseconds.</summary>
+    [Range(6_000, 3_600_000)]
+    public int SessionTimeoutMs { get; set; } = 45_000;
+
+    /// <inheritdoc/>
+    public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+    {
+        if (this.RetryMaxDelayMs < this.RetryBaseDelayMs)
+        {
+            yield return new(
+                "The maximum retry delay cannot be shorter than the base retry delay.",
+                [nameof(this.RetryMaxDelayMs)]
+            );
+        }
+
+        if (string.Equals(this.DeadLetterTopic, this.MeterReadingsTopic, StringComparison.Ordinal))
+        {
+            yield return new(
+                "The dead-letter topic must differ from the readings topic, otherwise poison "
+                    + "messages are republished to the topic they were just rejected from.",
+                [nameof(this.DeadLetterTopic)]
+            );
+        }
+    }
+}

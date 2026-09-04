@@ -1,5 +1,33 @@
 # MiddleProject
 
+A microservices system built around an intentionally unstable external API. See
+[MiddleProject.md](MiddleProject.md) for the full brief.
+
+## Services
+
+```
+WeakApp API --(HTTP poll)--> DataInjectorService --(Kafka: meter-readings)--> DataProcessorService --> PostgreSQL
+```
+
+| Service | Role | Ports (host) |
+|---|---|---|
+| [`weak_app`](WeakApp) | The unstable external API being consumed | 8080 |
+| [`data_injector`](DataInjectorService) | Polls WeakApp, publishes readings to Kafka | 8082, 8083 |
+| [`data_processor`](DataProcessorService) | Consumes readings, persists them to PostgreSQL | 8084, 8085 |
+| `postgres` | Reading storage | 5432 |
+| `kafka` | Message queue | 9092 |
+| `kafka-cluster-ui` | Kafka topic and consumer group browser | 8070 |
+| `prometheus` | Metrics scraping | 9090 |
+| `grafana` | Dashboards | 3000 |
+
+Bring everything up with `docker compose up -d`.
+
+The local PostgreSQL is `meterdb` with `postgres`/`postgres` — local development credentials only:
+
+```bash
+docker compose exec postgres psql -U postgres -d meterdb -c "select sensor_type, count(*) from meter_readings group by 1;"
+```
+
 ## Observability
 
 Services expose metrics via [OpenTelemetry](https://opentelemetry.io/), scraped by Prometheus and
@@ -15,7 +43,7 @@ this repo may be written in different languages.
 
 1. **Expose `/metrics`** on the service's normal HTTP port, in Prometheus exposition format (for
    .NET services: `OpenTelemetry.Exporter.Prometheus.AspNetCore` + `MapPrometheusScrapingEndpoint()`,
-   as done in `DataInjectorService` — see `Extensions/ObservabilityExtensions.cs`).
+   as done in `DataInjectorService` — see `Extensions/Extensions.cs`).
 2. **Metric naming**: use dotted OpenTelemetry instrument names,
    `<service>.<subsystem>.<noun>` (e.g. `data_injector.kafka.messages_produced`). The Prometheus
    exporter automatically converts these to snake_case with a unit suffix
