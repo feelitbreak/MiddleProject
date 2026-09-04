@@ -1,13 +1,15 @@
 namespace DataProcessorService.Infrastructure.Configuration;
 
 using System.ComponentModel.DataAnnotations;
-using System.Diagnostics.CodeAnalysis;
 
 /// <summary>
 /// Strongly-typed configuration for the Kafka consumer and the dead-letter producer.
 /// Bound from the "Kafka" section in appsettings / environment variables.
 /// </summary>
-[ExcludeFromCodeCoverage]
+/// <remarks>
+/// Not excluded from code coverage, unlike the plain options types: <see cref="Validate"/> carries
+/// real logic and is covered by unit tests.
+/// </remarks>
 public sealed class KafkaOptions : IValidatableObject
 {
     /// <summary>Configuration section this type binds from.</summary>

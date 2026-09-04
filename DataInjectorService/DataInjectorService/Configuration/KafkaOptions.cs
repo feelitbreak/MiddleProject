@@ -2,13 +2,15 @@ namespace DataInjectorService.Configuration;
 
 using Confluent.Kafka;
 using System.ComponentModel.DataAnnotations;
-using System.Diagnostics.CodeAnalysis;
 
 /// <summary>
 /// Strongly-typed configuration for the Kafka producer.
 /// Bound from the "Kafka" section in appsettings / environment variables.
 /// </summary>
-[ExcludeFromCodeCoverage]
+/// <remarks>
+/// Not excluded from code coverage, unlike <see cref="WeakAppOptions"/>: <see cref="Validate"/>
+/// carries real logic and is covered by unit tests.
+/// </remarks>
 public sealed class KafkaOptions : IValidatableObject
 {
     public const string SectionName = "Kafka";
