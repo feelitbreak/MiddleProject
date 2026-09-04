@@ -4,7 +4,6 @@ using DataProcessorService.Application.Abstractions.Persistence;
 using DataProcessorService.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
-using NpgsqlTypes;
 
 /// <summary>
 /// Writes readings with PostgreSQL's <c>INSERT ... ON CONFLICT DO NOTHING</c>.
@@ -40,6 +39,18 @@ public sealed class MeterReadingRepository(MeterReadingsDbContext context) : IMe
     /// </para>
     /// </summary>
     private static readonly string InsertSql = BuildInsertSql();
+
+    // PostgreSQL type names for the array parameters, given to NpgsqlParameter.DataTypeName.
+    //
+    // The alternative spelling is `NpgsqlDbType.Array | NpgsqlDbType.Integer`, which is Npgsql's
+    // documented idiom but combines members of an enum that carries no [Flags] attribute --- so it
+    // trips S3265, correctly. Naming the PostgreSQL types outright says the same thing without the
+    // enum arithmetic, and reads closer to the statement it parameterises.
+    private const string IntegerArray = "integer[]";
+    private const string TimestampTzArray = "timestamp with time zone[]";
+    private const string TextArray = "text[]";
+    private const string BooleanArray = "boolean[]";
+    private const string DoubleArray = "double precision[]";
 
     /// <inheritdoc/>
     public async Task<int> InsertIgnoringDuplicatesAsync(
@@ -79,14 +90,14 @@ public sealed class MeterReadingRepository(MeterReadingsDbContext context) : IMe
 
         var parameters = new List<object>
         {
-            Array(MeterReadingColumns.SensorId, sensorIds, NpgsqlDbType.Integer),
-            Array(MeterReadingColumns.CollectedAt, collectedAt, NpgsqlDbType.TimestampTz),
-            Array(MeterReadingColumns.SensorType, sensorTypes, NpgsqlDbType.Text),
-            Array(MeterReadingColumns.Co2, co2, NpgsqlDbType.Integer),
-            Array(MeterReadingColumns.Pm25, pm25, NpgsqlDbType.Integer),
-            Array(MeterReadingColumns.Humidity, humidity, NpgsqlDbType.Integer),
-            Array(MeterReadingColumns.MotionDetected, motionDetected, NpgsqlDbType.Boolean),
-            Array(MeterReadingColumns.EnergyKwh, energyKwh, NpgsqlDbType.Double),
+            Array(MeterReadingColumns.SensorId, sensorIds, IntegerArray),
+            Array(MeterReadingColumns.CollectedAt, collectedAt, TimestampTzArray),
+            Array(MeterReadingColumns.SensorType, sensorTypes, TextArray),
+            Array(MeterReadingColumns.Co2, co2, IntegerArray),
+            Array(MeterReadingColumns.Pm25, pm25, IntegerArray),
+            Array(MeterReadingColumns.Humidity, humidity, IntegerArray),
+            Array(MeterReadingColumns.MotionDetected, motionDetected, BooleanArray),
+            Array(MeterReadingColumns.EnergyKwh, energyKwh, DoubleArray),
         };
 
         // Rows affected excludes rows the conflict clause skipped, so the caller gets the
@@ -98,8 +109,8 @@ public sealed class MeterReadingRepository(MeterReadingsDbContext context) : IMe
         );
     }
 
-    private static NpgsqlParameter Array<T>(string name, T[] values, NpgsqlDbType elementType) =>
-        new(name, NpgsqlDbType.Array | elementType) { Value = values };
+    private static NpgsqlParameter Array<T>(string name, T[] values, string postgresArrayType) =>
+        new(name, values) { DataTypeName = postgresArrayType };
 
     private static string BuildInsertSql()
     {

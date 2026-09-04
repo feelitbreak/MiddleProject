@@ -26,7 +26,7 @@ internal static class LoggingBehaviorLog
         string requestName,
         double elapsedMs
     )
-        where TRequest : Application.Abstractions.Messaging.IRequest<TResult>
+        where TRequest : Abstractions.Messaging.IRequest<TResult>
         where TResult : Result
     {
         if (logger.IsEnabled(LogLevel.Debug))
@@ -54,7 +54,7 @@ internal static class LoggingBehaviorLog
         string description,
         double elapsedMs
     )
-        where TRequest : Application.Abstractions.Messaging.IRequest<TResult>
+        where TRequest : Abstractions.Messaging.IRequest<TResult>
         where TResult : Result
     {
         if (logger.IsEnabled(LogLevel.Warning))
@@ -82,7 +82,7 @@ internal static class LoggingBehaviorLog
         string requestName,
         double elapsedMs
     )
-        where TRequest : Application.Abstractions.Messaging.IRequest<TResult>
+        where TRequest : Abstractions.Messaging.IRequest<TResult>
         where TResult : Result
     {
         if (logger.IsEnabled(LogLevel.Error))

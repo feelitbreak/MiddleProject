@@ -167,9 +167,9 @@ dotnet run --project src/Api
 dotnet ef migrations add <Name> --project src/Infrastructure --startup-project src/Api --output-dir Persistence/Migrations
 ```
 
-A design-time factory supplies the context, so this needs no reachable database. For commands that
-do talk to one, such as `dotnet ef database update`, set
-`DATAPROCESSOR_DESIGNTIME_CONNECTION`.
+The EF tooling defaults the environment to `Development`, so it picks up the connection string
+from `appsettings.Development.json`. Point it elsewhere with
+`ASPNETCORE_ENVIRONMENT` or `Database__ConnectionString`.
 
 ## Testing
 

@@ -2,6 +2,7 @@ namespace DataProcessorService.Api;
 
 using DataProcessorService.Api.Extensions;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Hosting;
 using Serilog;
 using System.Diagnostics.CodeAnalysis;
 
@@ -80,6 +81,13 @@ public static class Program
             );
 
             await app.RunAsync();
+        }
+        catch (HostAbortedException)
+        {
+            // Expected: the EF Core design-time tooling intercepts host construction and aborts
+            // once it has the service provider. Letting it through keeps `dotnet ef` commands from
+            // reporting a fatal error for what is ordinary control flow.
+            throw;
         }
         catch (Exception ex)
         {
