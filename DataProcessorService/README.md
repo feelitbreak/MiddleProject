@@ -121,6 +121,10 @@ In `docker-compose.yml` (repo root) this service runs as `data_processor`, point
 
 | Endpoint | Purpose |
 |---|---|
+| `GET /api/readings` | Readings newest first, filtered and cursor-paged |
+| `GET /api/readings/latest` | The most recent reading for every sensor |
+| `GET /api/readings/aggregate` | One metric bucketed by time and grouped by location |
+| `GET /api/sensors` | The sensor catalogue |
 | `GET /health/live` | Liveness — unhealthy if the consumer loop has stalled |
 | `GET /health/ready` | Readiness — database reachable and partitions assigned |
 | `GET /metrics` | Prometheus scraping endpoint |
@@ -130,8 +134,51 @@ The liveness probe reports on the consumer loop's last iteration rather than mer
 being up: a wedged or evicted consumer leaves the web host answering requests normally while
 ingesting nothing.
 
-The REST query API (paged readings, latest-per-sensor, time-bucketed aggregates) is not in this
-change; it follows next.
+### Query API
+
+One vocabulary throughout: `air_quality`, `motion`, `energy` appear in Kafka messages, in the
+database, in JSON responses, and in query strings. That last one needs saying because minimal API
+parameter binding does **not** consult the JSON serializer — a parameter declared as an enum would
+demand the C# member name (`AirQuality`) while responses emit `air_quality`. Enum-valued parameters
+are therefore bound as strings and converted through `EnumVocabulary<T>`, which also turns an
+unrecognised value into a problem response listing what was expected.
+
+`ReadingDto` is flat rather than polymorphic: columns that do not apply to a reading's sensor type
+are null and omitted from the response, so an energy reading serialises as
+`{"id":…,"sensorName":"Kitchen","sensorType":"energy","collectedAt":…,"energyKwh":12.5}`. A uniform
+shape suits charting and tabulation, and keeps the OpenAPI schema to one type.
+
+**Pagination is by cursor, not page number.** Readings arrive continuously at the head of the
+`collected_at DESC` ordering, so a numbered page would both re-scan everything before it and shift
+under the reader between requests. The cursor encodes `(collected_at, id)` — the identifier is part
+of the key because a whole polling batch shares one collection instant, and ordering by timestamp
+alone would let a page boundary fall inside such a group and skip or repeat rows. One row beyond
+the page is fetched so `hasMore` costs nothing. The trade-off is that there is no "page 5 of 20",
+only "next"; the same shape maps directly onto the connection model a GraphQL gateway will want.
+
+**Aggregation stays in LINQ.** The Npgsql provider does not expose `date_trunc` as a `DbFunction`,
+so it is mapped with `HasDbFunction` in `MeterReadingsDbContext`. That keeps grouping composable
+*and* means the unit and time zone arrive as bound parameters:
+
+```sql
+SELECT date_trunc(@unit, m.collected_at, @zone) AS "Key", avg(...) FROM meter_readings AS m ...
+```
+
+The time zone argument is not optional — `date_trunc` on a `timestamptz` truncates in the *session*
+time zone, so omitting it would make every daily bucket depend on server configuration.
+
+Every aggregation is bounded: `from` and `to` are mandatory, the range may not exceed 90 days, and
+the result may not exceed 2000 buckets per location. The two limits guard different things — the
+range bounds how much is scanned, the bucket count bounds how much comes back — and the bucket cap
+sits deliberately below the 2160 that 90 days at hourly spacing would produce, so that it actually
+constrains rather than sitting unreachable behind the range cap.
+
+Aggregating `motion_detected` maps true and false to 1 and 0, so a bucket's average is the fraction
+of readings in which motion was seen.
+
+Validation lives in the query handlers and returns `Error.CreateValidation`, which `ApiResults`
+maps to a 400 problem response. A dedicated validation pipeline behaviour would add indirection
+without removing duplication across four queries.
 
 ## Observability
 

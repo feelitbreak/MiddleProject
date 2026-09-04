@@ -1,5 +1,6 @@
 namespace DataProcessorService.Api;
 
+using DataProcessorService.Api.Endpoints;
 using DataProcessorService.Api.Extensions;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Hosting;
@@ -41,6 +42,7 @@ public static class Program
             );
 
             builder.Services.AddCorsConfiguration(builder.Configuration);
+            builder.Services.AddJsonConfiguration();
             builder.Services.AddSwaggerGenConfiguration();
             builder.Services.AddPersistence(builder.Configuration);
             builder.Services.AddCqrsHandlers();
@@ -59,6 +61,7 @@ public static class Program
             }
 
             app.UseCors("AllowOrigins");
+            app.MapReadingEndpoints();
             app.MapPrometheusScrapingEndpoint();
 
             app.MapHealthChecks(

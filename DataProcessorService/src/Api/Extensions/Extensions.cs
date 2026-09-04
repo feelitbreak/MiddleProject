@@ -3,11 +3,17 @@ namespace DataProcessorService.Api.Extensions;
 using DataProcessorService.Api.HealthChecks;
 using DataProcessorService.Application.Abstractions.Persistence;
 using DataProcessorService.Application.Behaviors;
+using DataProcessorService.Application.Contracts;
 using DataProcessorService.Application.Dispatch;
+using DataProcessorService.Application.Readings.GetLatestReadings;
+using DataProcessorService.Application.Readings.GetReadingAggregates;
+using DataProcessorService.Application.Readings.GetReadings;
 using DataProcessorService.Application.Readings.IngestReadingBatch;
+using DataProcessorService.Application.Sensors.GetSensors;
 using DataProcessorService.Infrastructure.Configuration;
 using DataProcessorService.Infrastructure.Messaging;
 using DataProcessorService.Infrastructure.Persistence;
+using DataProcessorService.Infrastructure.Persistence.Queries;
 using DataProcessorService.Infrastructure.Persistence.Repositories;
 using DataProcessorService.Infrastructure.Telemetry;
 using Microsoft.EntityFrameworkCore;
@@ -15,6 +21,8 @@ using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 /// <summary>
 /// <see cref="IServiceCollection"/> extension methods that keep <c>Program.cs</c> declarative and
@@ -24,6 +32,24 @@ using System.Reflection;
 [ExcludeFromCodeCoverage]
 public static class Extensions
 {
+    /// <summary>
+    /// Configures JSON for the read API: sensor types are written using the same vocabulary as the
+    /// wire contract and the database, and columns that do not apply to a reading's type are
+    /// omitted rather than serialised as nulls.
+    /// </summary>
+    /// <param name="services">The service collection.</param>
+    public static void AddJsonConfiguration(this IServiceCollection services)
+    {
+        services.ConfigureHttpJsonOptions(options =>
+        {
+            options.SerializerOptions.Converters.Add(
+                new JsonStringEnumConverter(JsonNamingPolicy.SnakeCaseLower)
+            );
+            options.SerializerOptions.DefaultIgnoreCondition =
+                JsonIgnoreCondition.WhenWritingNull;
+        });
+    }
+
     /// <summary>Registers Swagger/OpenAPI generation for the service.</summary>
     /// <param name="services">The service collection.</param>
     public static void AddSwaggerGenConfiguration(this IServiceCollection services)
@@ -132,6 +158,8 @@ public static class Extensions
 
         services.AddScoped<IMeterReadingRepository, MeterReadingRepository>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
+        services.AddScoped<IReadingQueries, ReadingQueries>();
+        services.AddScoped<ISensorQueries, SensorQueries>();
 
         // Singleton so the sensor catalogue is cached process-wide; it opens its own scope on the
         // rare occasions it needs the database.
@@ -180,6 +208,22 @@ public static class Extensions
                     IngestReadingBatchSummary,
                     IngestReadingBatchCommandHandler
                 >()
+                .AddQueryHandler<
+                    GetReadingsQuery,
+                    CursorPage<ReadingDto>,
+                    GetReadingsQueryHandler
+                >()
+                .AddQueryHandler<
+                    GetLatestReadingsQuery,
+                    IReadOnlyList<ReadingDto>,
+                    GetLatestReadingsQueryHandler
+                >()
+                .AddQueryHandler<
+                    GetReadingAggregatesQuery,
+                    IReadOnlyList<AggregateBucketDto>,
+                    GetReadingAggregatesQueryHandler
+                >()
+                .AddQueryHandler<GetSensorsQuery, IReadOnlyList<SensorDto>, GetSensorsQueryHandler>()
         );
     }
 

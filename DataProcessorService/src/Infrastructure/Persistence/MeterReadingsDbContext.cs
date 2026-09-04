@@ -25,6 +25,16 @@ public sealed class MeterReadingsDbContext(DbContextOptions<MeterReadingsDbConte
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfigurationsFromAssembly(Assembly.GetExecutingAssembly());
+
+        modelBuilder
+            .HasDbFunction(
+                typeof(PostgresFunctions).GetMethod(
+                    nameof(PostgresFunctions.DateTrunc),
+                    [typeof(string), typeof(DateTimeOffset), typeof(string)]
+                )!
+            )
+            .HasName("date_trunc");
+
         base.OnModelCreating(modelBuilder);
     }
 }
