@@ -54,6 +54,9 @@ public static class TransientFailureClassifier
                     return true;
                 case DbUpdateConcurrencyException:
                     return false;
+                default:
+                    // Keep walking the inner-exception chain.
+                    break;
             }
         }
 

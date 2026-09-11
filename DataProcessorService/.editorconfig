@@ -246,3 +246,16 @@ dotnet_naming_style.begins_with_i.required_prefix = I
 dotnet_naming_style.begins_with_i.required_suffix = 
 dotnet_naming_style.begins_with_i.word_separator = 
 dotnet_naming_style.begins_with_i.capitalization = pascal_case
+
+# SonarQube rules that the SonarAnalyzer package leaves off by default but the server's quality
+# profile enforces. Without enabling them here, `dotnet build` passes locally and the Sonar stage
+# fails in CI -- the exact gap that let an 8-parameter lambda through.
+[*.cs]
+dotnet_diagnostic.S107.severity = warning
+dotnet_diagnostic.S131.severity = warning
+dotnet_diagnostic.S1128.severity = warning
+dotnet_diagnostic.S3902.severity = warning
+dotnet_diagnostic.S4004.severity = warning
+dotnet_diagnostic.S4058.severity = warning
+dotnet_diagnostic.S6513.severity = warning
+dotnet_diagnostic.S6566.severity = warning

@@ -42,7 +42,7 @@ public sealed class HealthReportDto
 /// documented alongside everything else, and they return which check failed instead of one word.
 /// </para>
 /// </summary>
-[ExcludeFromCodeCoverage]
+[ExcludeFromCodeCoverage(Justification = "Endpoint wiring only; the behaviour lives in the handlers those endpoints dispatch to.")]
 public static class HealthEndpoints
 {
     /// <summary>Maps the liveness and readiness endpoints.</summary>

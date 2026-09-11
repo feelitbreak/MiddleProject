@@ -12,7 +12,7 @@ using System.Diagnostics.CodeAnalysis;
 /// sibling DataInjectorService uses.
 /// </para>
 /// </summary>
-[ExcludeFromCodeCoverage]
+[ExcludeFromCodeCoverage(Justification = "Logging message definitions: no branching behaviour to cover.")]
 internal static class LoggingBehaviorLog
 {
     /// <summary>Logs a successfully handled request.</summary>

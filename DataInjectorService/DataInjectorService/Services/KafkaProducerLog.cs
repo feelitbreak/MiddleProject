@@ -8,7 +8,7 @@ using System.Diagnostics.CodeAnalysis;
 /// eliminating the CA1873 "possibly unnecessary argument evaluation" warning without requiring
 /// source generation or partial methods.
 /// </summary>
-[ExcludeFromCodeCoverage]
+[ExcludeFromCodeCoverage(Justification = "Logging message definitions: no branching behaviour to cover.")]
 internal static class KafkaProducerLog
 {
     internal static void ProducerInitialised(

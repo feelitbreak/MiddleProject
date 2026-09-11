@@ -225,9 +225,9 @@ public sealed class KafkaConsumerServiceTests(PostgresFixture postgres, KafkaFix
 
         try
         {
-            var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(60);
+            var deadline = DateTimeOffset.UtcNow + TimeSpan.FromSeconds(60);
 
-            while (DateTime.UtcNow < deadline && !await until())
+            while (DateTimeOffset.UtcNow < deadline && !await until())
             {
                 await Task.Delay(250, TestContext.Current.CancellationToken);
             }

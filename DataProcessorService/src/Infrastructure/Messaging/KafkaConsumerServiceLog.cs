@@ -9,7 +9,7 @@ using System.Diagnostics.CodeAnalysis;
 /// <see cref="ILogger.IsEnabled"/> before formatting so that CA1873 is satisfied without
 /// source-generated logging --- the same approach the sibling DataInjectorService uses.
 /// </summary>
-[ExcludeFromCodeCoverage]
+[ExcludeFromCodeCoverage(Justification = "Logging message definitions: no branching behaviour to cover.")]
 internal static class KafkaConsumerServiceLog
 {
     /// <summary>Logs that the consumer subscribed to its topic.</summary>
@@ -201,7 +201,7 @@ internal static class KafkaConsumerServiceLog
 }
 
 /// <summary>Logging extensions for <see cref="DeadLetterProducer"/>.</summary>
-[ExcludeFromCodeCoverage]
+[ExcludeFromCodeCoverage(Justification = "Logging message definitions: no branching behaviour to cover.")]
 internal static class DeadLetterProducerLog
 {
     /// <summary>Logs a message moved to the dead-letter topic.</summary>

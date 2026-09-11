@@ -30,11 +30,24 @@ contract is preferred over coupling two services' builds.
 - Tests: xUnit v3, Moq, plain `Assert.*`, `Method_Scenario_ExpectedResult`. Integration tests use
   Testcontainers and are tagged `[Trait("Category", "Integration")]`.
 
+### Verifying a change
+
+Run all three, from the service directory. `dotnet build` alone is not enough — incremental builds
+skip analyzers on unchanged projects, so a clean is what actually surfaces analyzer findings:
+
 ```bash
-cd <Service> && dotnet build && dotnet format --verify-no-changes && dotnet test
+dotnet clean && dotnet build --nologo && dotnet format --verify-no-changes && dotnet test
 ```
 
-CI runs `dotnet format --verify-no-changes` — a formatting diff fails the build.
+The build must end in `0 Warning(s)`. Never report work as done without having seen that line:
+`TreatWarningsAsErrors` means a warning is a broken build, and analyzer output is easy to miss when
+skimming for the word "error".
+
+`SonarAnalyzer.CSharp` is referenced by every project so the SonarQube
+rules CI enforces also run locally. Some Sonar rules ship **disabled by default** in that package
+while the server's quality profile has them on — S107 is one — so the ones we rely on are enabled
+explicitly in `.editorconfig`. If SonarQube reports a rule the local build did not, enable it there
+rather than fixing it blind.
 
 ## Frontend (React + TypeScript)
 

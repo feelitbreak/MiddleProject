@@ -82,9 +82,9 @@ public sealed class KafkaFixture : IAsyncLifetime
         consumer.Subscribe(topic);
 
         var consumed = new List<ConsumeResult<byte[], byte[]>>();
-        var deadline = DateTime.UtcNow + timeout;
+        var deadline = DateTimeOffset.UtcNow + timeout;
 
-        while (consumed.Count < count && DateTime.UtcNow < deadline)
+        while (consumed.Count < count && DateTimeOffset.UtcNow < deadline)
         {
             var result = consumer.Consume(TimeSpan.FromMilliseconds(500));
 

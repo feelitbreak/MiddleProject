@@ -131,8 +131,9 @@ public sealed class MeterReadingMessageDecoderTests
     [Fact]
     public void Decode_PayloadNotAnObject_FailsPermanently()
     {
-        // The upstream API is documented to emit {"error":"data corrupted"} under fault injection;
-        // the producer filters that, but a scalar payload must still fail cleanly rather than throw.
+        // Under fault injection the upstream API returns an error body in place of readings. The
+        // producer filters those out, but a payload that is a scalar rather than an object must
+        // still fail cleanly here rather than throw.
         const string Json = """
             {"type":"energy","name":"Kitchen","payload":12.5,"collectedAt":"2026-09-03T10:00:00+00:00"}
             """;

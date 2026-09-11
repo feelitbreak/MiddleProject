@@ -7,7 +7,7 @@ using System.Diagnostics.CodeAnalysis;
 /// Translates a <see cref="Result"/> into an HTTP response, so that endpoints stay free of status
 /// code decisions and every failure category maps the same way everywhere.
 /// </summary>
-[ExcludeFromCodeCoverage]
+[ExcludeFromCodeCoverage(Justification = "Maps error categories onto status codes; wiring rather than behaviour.")]
 public static class ApiResults
 {
     /// <summary>Returns the value on success, or a problem response describing the failure.</summary>

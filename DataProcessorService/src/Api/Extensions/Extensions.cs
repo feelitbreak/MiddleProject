@@ -31,7 +31,7 @@ using System.Text.Json.Serialization;
 /// free of registration boilerplate. Single composition root for the whole service, matching the
 /// layout of the sibling DataInjectorService.
 /// </summary>
-[ExcludeFromCodeCoverage]
+[ExcludeFromCodeCoverage(Justification = "Dependency injection wiring, exercised indirectly by every integration test.")]
 public static class Extensions
 {
     /// <summary>
@@ -65,7 +65,7 @@ public static class Extensions
         {
             options.SwaggerDoc("v1", new() { Title = "DataProcessorService", Version = "v1" });
 
-            var xmlFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
+            var xmlFile = $"{typeof(Extensions).Assembly.GetName().Name}.xml";
             var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
 
             if (File.Exists(xmlPath))
@@ -254,7 +254,7 @@ public static class Extensions
     {
         services.AddSingleton<DataProcessorMetrics>();
 
-        var serviceVersion = Assembly.GetExecutingAssembly().GetName().Version?.ToString();
+        var serviceVersion = typeof(Extensions).Assembly.GetName().Version?.ToString();
 
         services
             .AddOpenTelemetry()

@@ -15,7 +15,7 @@ using System.Diagnostics.CodeAnalysis;
 /// arrive as bound parameters, so no caller-supplied value is ever concatenated into a statement.
 /// </para>
 /// </summary>
-[ExcludeFromCodeCoverage]
+[ExcludeFromCodeCoverage(Justification = "A marker for EF Core translation, never executed in process.")]
 public static class PostgresFunctions
 {
     /// <summary>

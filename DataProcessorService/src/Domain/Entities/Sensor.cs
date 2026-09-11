@@ -20,6 +20,6 @@ public sealed class Sensor
     /// <summary>Gets or sets the kind of data the sensor emits.</summary>
     public SensorType Type { get; set; }
 
-    /// <summary>Gets or sets the readings recorded by this sensor.</summary>
-    public ICollection<MeterReading> Readings { get; set; } = [];
+    /// <summary>Gets the readings recorded by this sensor.</summary>
+    public ICollection<MeterReading> Readings { get; } = [];
 }

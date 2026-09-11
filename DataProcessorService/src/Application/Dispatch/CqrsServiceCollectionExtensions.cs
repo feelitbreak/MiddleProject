@@ -7,7 +7,7 @@ using System.Diagnostics.CodeAnalysis;
 /// <summary>
 /// Entry point for wiring up the CQRS dispatcher.
 /// </summary>
-[ExcludeFromCodeCoverage]
+[ExcludeFromCodeCoverage(Justification = "Dependency injection wiring, exercised indirectly by every integration test.")]
 public static class CqrsServiceCollectionExtensions
 {
     /// <summary>

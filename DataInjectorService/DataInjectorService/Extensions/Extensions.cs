@@ -6,21 +6,20 @@ using DataInjectorService.Telemetry;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using System.Diagnostics.CodeAnalysis;
-using System.Reflection;
 
 /// <summary>
 /// <see cref="IServiceCollection"/> extension methods that keep <c>Program.cs</c>
 /// declarative and free of registration boilerplate.
 /// </summary>
-[ExcludeFromCodeCoverage]
+[ExcludeFromCodeCoverage(Justification = "Dependency injection wiring, exercised indirectly by every integration test.")]
 public static class Extensions
 {
     /// <summary>Registers Swagger/OpenAPI generation for the service.</summary>
     /// <param name="services">The service collection.</param>
     public static void AddSwaggerGenConfiguration(this IServiceCollection services)
     {
-        // Minimal API endpoints (the health probes) are not surfaced to Swagger without this;
-        // controllers bring their own API explorer, minimal APIs do not.
+        // Controllers bring their own API explorer but minimal APIs do not, so without this the
+        // health probes would never reach Swagger.
         services.AddEndpointsApiExplorer();
 
         services.AddSwaggerGen(options =>
@@ -160,7 +159,7 @@ public static class Extensions
     {
         services.AddSingleton<DataInjectorMetrics>();
 
-        var serviceVersion = Assembly.GetExecutingAssembly().GetName().Version?.ToString();
+        var serviceVersion = typeof(Extensions).Assembly.GetName().Version?.ToString();
 
         services
             .AddOpenTelemetry()

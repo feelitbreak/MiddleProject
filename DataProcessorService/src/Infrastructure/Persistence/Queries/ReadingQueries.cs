@@ -3,7 +3,6 @@ namespace DataProcessorService.Infrastructure.Persistence.Queries;
 using DataProcessorService.Application.Abstractions.Persistence;
 using DataProcessorService.Application.Contracts;
 using DataProcessorService.Domain.Entities;
-using DataProcessorService.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 
 /// <summary>

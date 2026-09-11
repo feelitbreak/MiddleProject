@@ -7,7 +7,7 @@ using System.Diagnostics.CodeAnalysis;
 /// Strongly-typed configuration for the WeakApp external API client.
 /// Bound from the "WeakApp" section in appsettings / environment variables.
 /// </summary>
-[ExcludeFromCodeCoverage]
+[ExcludeFromCodeCoverage(Justification = "Configuration binding target, exercised through the options validation tests.")]
 public sealed class WeakAppOptions
 {
     public const string SectionName = "WeakApp";

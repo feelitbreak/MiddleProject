@@ -10,12 +10,53 @@ using DataProcessorService.Domain.Enums;
 using System.Diagnostics.CodeAnalysis;
 
 /// <summary>
+/// Query parameters for listing readings, bound as one object.
+/// <para>
+/// Grouped rather than declared as eight separate lambda parameters, which trips S107. The
+/// grouping is the better shape anyway: the filter travels as a unit, and Swagger documents each
+/// property individually all the same.
+/// </para>
+/// </summary>
+public sealed class GetReadingsRequest
+{
+    /// <summary>Gets or sets the location filter, or null for every location.</summary>
+    public string? Location { get; set; }
+
+    /// <summary>Gets or sets the sensor type filter, or null for every type.</summary>
+    public SensorType? SensorType { get; set; }
+
+    /// <summary>Gets or sets the inclusive lower bound on collection time.</summary>
+    public DateTimeOffset? From { get; set; }
+
+    /// <summary>Gets or sets the exclusive upper bound on collection time.</summary>
+    public DateTimeOffset? To { get; set; }
+
+    /// <summary>Gets or sets the one-based page number. Defaults to the first page.</summary>
+    public int? Page { get; set; }
+
+    /// <summary>Gets or sets the page size. Defaults to <see cref="GetReadingsQuery.DefaultPageSize"/>.</summary>
+    public int? PageSize { get; set; }
+
+    /// <summary>Converts the bound request into the query to dispatch.</summary>
+    /// <returns>The query.</returns>
+    public GetReadingsQuery ToQuery() =>
+        new(
+            this.Location,
+            this.SensorType,
+            this.From,
+            this.To,
+            this.Page ?? 1,
+            this.PageSize ?? GetReadingsQuery.DefaultPageSize
+        );
+}
+
+/// <summary>
 /// The read side of the service: informational endpoints for developers and operators, not a
 /// consumer-facing API. The dashboard reads through the GraphQL gateway, which queries the database
 /// directly, so these are deliberately plain --- ordinary page numbers, sensible defaults, and
 /// enums bound the way ASP.NET Core binds them out of the box.
 /// </summary>
-[ExcludeFromCodeCoverage]
+[ExcludeFromCodeCoverage(Justification = "Endpoint wiring only; the behaviour lives in the handlers those endpoints dispatch to.")]
 public static class ReadingEndpoints
 {
     /// <summary>Maps every read endpoint.</summary>
@@ -29,27 +70,12 @@ public static class ReadingEndpoints
             .MapGet(
                 "/",
                 async (
+                    [AsParameters] GetReadingsRequest request,
                     ISender sender,
-                    CancellationToken cancellationToken,
-                    string? location = null,
-                    SensorType? sensorType = null,
-                    DateTimeOffset? from = null,
-                    DateTimeOffset? to = null,
-                    int page = 1,
-                    int pageSize = GetReadingsQuery.DefaultPageSize
+                    CancellationToken cancellationToken
                 ) =>
                     (
-                        await sender.SendAsync(
-                            new GetReadingsQuery(
-                                location,
-                                sensorType,
-                                from,
-                                to,
-                                page,
-                                pageSize
-                            ),
-                            cancellationToken
-                        )
+                        await sender.SendAsync(request.ToQuery(), cancellationToken)
                     ).ToHttpResult()
             )
             .WithName("GetReadings")

@@ -14,7 +14,7 @@ using System.Diagnostics.CodeAnalysis;
 /// declaration carrying the attribute (sonar-dotnet#9562).
 /// </para>
 /// </summary>
-[ExcludeFromCodeCoverage]
+[ExcludeFromCodeCoverage(Justification = "Host composition and start-up wiring.")]
 public static class Program
 {
     /// <summary>Builds, configures and runs the web application.</summary>

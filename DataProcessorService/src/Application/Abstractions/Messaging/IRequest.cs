@@ -1,6 +1,7 @@
 namespace DataProcessorService.Application.Abstractions.Messaging;
 
 using DataProcessorService.Domain.Common;
+using System.Diagnostics.CodeAnalysis;
 
 /// <summary>
 /// Marker for anything dispatchable through <see cref="ISender"/>. Every request resolves to a
@@ -8,6 +9,14 @@ using DataProcessorService.Domain.Common;
 /// a single non-generic executor abstraction rather than reflecting over generic arguments.
 /// </summary>
 /// <typeparam name="TResult">The result type the request produces.</typeparam>
+[SuppressMessage(
+    "Major Code Smell",
+    "S2326:Unused type parameters should be removed",
+    Justification = "TResult carries the result type through the type system rather than through a "
+        + "member. It is what lets ISender.SendAsync infer what a request returns, and what lets "
+        + "the handler and behaviour interfaces constrain to a matching pair. Removing it would "
+        + "make dispatch untyped."
+)]
 public interface IRequest<TResult>
     where TResult : Result;
 

@@ -14,7 +14,7 @@ using System.Diagnostics.CodeAnalysis;
 /// sibling DataInjectorService.
 /// </para>
 /// </summary>
-[ExcludeFromCodeCoverage]
+[ExcludeFromCodeCoverage(Justification = "Host composition and start-up wiring.")]
 public static class Program
 {
     /// <summary>Builds, migrates and runs the host.</summary>

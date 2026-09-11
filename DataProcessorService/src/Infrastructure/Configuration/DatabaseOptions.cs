@@ -7,7 +7,7 @@ using System.Diagnostics.CodeAnalysis;
 /// Strongly-typed configuration for the PostgreSQL connection.
 /// Bound from the "Database" section in appsettings / environment variables.
 /// </summary>
-[ExcludeFromCodeCoverage]
+[ExcludeFromCodeCoverage(Justification = "Configuration binding target, exercised through the options validation tests.")]
 public sealed class DatabaseOptions
 {
     /// <summary>Configuration section this type binds from.</summary>

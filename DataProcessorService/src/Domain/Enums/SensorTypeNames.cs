@@ -53,7 +53,7 @@ public static class SensorTypeNames
         // IsDefined a payload declaring "type": "1" would read as a valid sensor type; and the
         // round trip rejects every spelling but the canonical one, so a producer emitting
         // "AirQuality" is dead-lettered as the contract violation it is instead of quietly working.
-        return Enum.TryParse(name.Replace("_", string.Empty), ignoreCase: true, out type)
+        return Enum.TryParse(name.Replace("_", string.Empty, StringComparison.Ordinal), ignoreCase: true, out type)
             && Enum.IsDefined(type)
             && string.Equals(ToName(type), name, StringComparison.Ordinal);
     }
