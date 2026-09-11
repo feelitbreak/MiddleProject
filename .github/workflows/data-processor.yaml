@@ -50,13 +50,13 @@ jobs:
           /k:"feelitbreak_MiddleProject_DataProcessorService" \
           /n:"Data Processor Service" \
           /o:"feelitbreak" \
-          /d:sonar.token="${{ secrets.SONAR_TOKEN }}" \
+          /d:sonar.token="${{ secrets.SONAR_TOKEN_DATA_PROCESSOR }}" \
           /d:sonar.cs.vscoveragexml.reportsPaths=coverage.xml \
           /d:sonar.projectBaseDir="$GITHUB_WORKSPACE/DataProcessorService" \
           /d:sonar.coverage.exclusions="src/Api/Program.cs,src/Api/Extensions/Extensions.cs,src/Api/Endpoints/**,src/Application/Behaviors/LoggingBehaviorLog.cs,src/Application/Dispatch/CqrsServiceCollectionExtensions.cs,src/Infrastructure/Configuration/DatabaseOptions.cs,src/Infrastructure/Messaging/KafkaConsumerServiceLog.cs,src/Infrastructure/Persistence/PostgresFunctions.cs,src/Infrastructure/Persistence/Migrations/**"
         dotnet build --no-restore
         dotnet-coverage collect "dotnet test --no-build --verbosity normal" -f xml -o "coverage.xml"
-        dotnet-sonarscanner end /d:sonar.token="${{ secrets.SONAR_TOKEN }}"
+        dotnet-sonarscanner end /d:sonar.token="${{ secrets.SONAR_TOKEN_DATA_PROCESSOR }}"
   publish:
     if: github.ref == 'refs/heads/main'
     needs: build

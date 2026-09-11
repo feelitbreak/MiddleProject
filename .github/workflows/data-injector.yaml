@@ -47,16 +47,16 @@ jobs:
         dotnet restore
         dotnet format DataInjectorService.slnx --verify-no-changes --verbosity diagnostic
         dotnet-sonarscanner begin \
-          /k:"feelitbreak_MiddleProject" \
+          /k:"feelitbreak_MiddleProject_DataInjectorService" \
           /n:"Data Injector Service" \
           /o:"feelitbreak" \
-          /d:sonar.token="${{ secrets.SONAR_TOKEN }}" \
+          /d:sonar.token="${{ secrets.SONAR_TOKEN_DATA_INJECTOR }}" \
           /d:sonar.cs.vscoveragexml.reportsPaths=coverage.xml \
           /d:sonar.projectBaseDir="$GITHUB_WORKSPACE/DataInjectorService" \
           /d:sonar.coverage.exclusions="DataInjectorService/Program.cs,DataInjectorService/Extensions/Extensions.cs,DataInjectorService/Endpoints/**,DataInjectorService/Configuration/WeakAppOptions.cs,DataInjectorService/Services/*Log.cs"
         dotnet build --no-restore
         dotnet-coverage collect "dotnet test --no-build --verbosity normal" -f xml -o "coverage.xml"
-        dotnet-sonarscanner end /d:sonar.token="${{ secrets.SONAR_TOKEN }}"
+        dotnet-sonarscanner end /d:sonar.token="${{ secrets.SONAR_TOKEN_DATA_INJECTOR }}"
   publish:
     if: github.ref == 'refs/heads/main'
     needs: build
