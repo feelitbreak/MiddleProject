@@ -18,8 +18,6 @@ using System.Diagnostics.CodeAnalysis;
 public static class Program
 {
     /// <summary>Builds, migrates and runs the host.</summary>
-    /// <param name="args">Command-line arguments.</param>
-    /// <returns>A task that completes when the host shuts down.</returns>
     public static async Task Main(string[] args)
     {
         Log.Logger = new LoggerConfiguration().WriteTo.Console().CreateBootstrapLogger();

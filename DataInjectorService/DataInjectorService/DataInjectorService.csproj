@@ -33,11 +33,6 @@
     <PackageReference Include="Swashbuckle.AspNetCore" Version="10.2.3" />
   </ItemGroup>
   <ItemGroup>
-    <!--
-      The rules CI enforces through dotnet-sonarscanner, running in the local build too. Without
-      this the SonarQube rules are invisible to `dotnet build` and only an IDE plugin reports them,
-      so a violation is not found until the pipeline fails.
-    -->
     <PackageReference Include="SonarAnalyzer.CSharp" Version="10.34.0.3385">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>

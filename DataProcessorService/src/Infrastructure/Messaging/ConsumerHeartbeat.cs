@@ -26,6 +26,5 @@ public sealed class ConsumerHeartbeat
         Interlocked.Exchange(ref this.lastIterationTicks, DateTimeOffset.UtcNow.UtcTicks);
 
     /// <summary>Records whether the consumer currently owns any partitions.</summary>
-    /// <param name="assigned">Whether the partition assignment is non-empty.</param>
     public void SetAssignment(bool assigned) => this.hasAssignment = assigned;
 }

@@ -5,7 +5,6 @@ using DataProcessorService.Application.Contracts;
 using Microsoft.EntityFrameworkCore;
 
 /// <summary>Read-side queries over the sensor catalogue.</summary>
-/// <param name="context">The scoped database context.</param>
 public sealed class SensorQueries(MeterReadingsDbContext context) : ISensorQueries
 {
     /// <inheritdoc/>

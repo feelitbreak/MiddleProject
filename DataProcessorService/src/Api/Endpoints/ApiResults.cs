@@ -11,9 +11,6 @@ using System.Diagnostics.CodeAnalysis;
 public static class ApiResults
 {
     /// <summary>Returns the value on success, or a problem response describing the failure.</summary>
-    /// <typeparam name="TValue">The value type.</typeparam>
-    /// <param name="result">The outcome to translate.</param>
-    /// <returns>An HTTP result.</returns>
     public static IResult ToHttpResult<TValue>(this Result<TValue> result)
     {
         ArgumentNullException.ThrowIfNull(result);
@@ -25,8 +22,6 @@ public static class ApiResults
     /// Returns a 400 problem response describing an invalid request, matching the shape produced
     /// for validation failures raised inside a handler.
     /// </summary>
-    /// <param name="detail">What was wrong with the request.</param>
-    /// <returns>An HTTP result.</returns>
     public static IResult ValidationProblem(string detail) =>
         Problem(Error.CreateValidation(detail));
 

@@ -16,8 +16,6 @@ using System.Globalization;
 /// would consider it dead.
 /// </para>
 /// </summary>
-/// <param name="heartbeat">The consumer's liveness signal.</param>
-/// <param name="options">Kafka configuration options.</param>
 public sealed class ConsumerLivenessHealthCheck(
     ConsumerHeartbeat heartbeat,
     IOptions<KafkaOptions> options

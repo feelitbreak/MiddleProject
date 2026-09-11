@@ -106,8 +106,6 @@ public sealed class KafkaProducerIntegrationTests(KafkaContainerFixture fixture)
     /// falling back to <see cref="Acks.All"/>.
     /// </para>
     /// </summary>
-    /// <param name="acks">The configured acks value.</param>
-    /// <param name="enableIdempotence">Whether the idempotent producer is enabled.</param>
     [Theory]
     [InlineData(Acks.All, true)]
     [InlineData(Acks.Leader, false)]
@@ -184,9 +182,6 @@ public sealed class KafkaProducerIntegrationTests(KafkaContainerFixture fixture)
     /// Reads exactly <paramref name="count"/> messages from the beginning of
     /// <paramref name="topic"/> using a throwaway consumer group.
     /// </summary>
-    /// <param name="topic">The topic to read from.</param>
-    /// <param name="count">The number of messages expected.</param>
-    /// <returns>The consumed messages, in offset order.</returns>
     private List<ConsumeResult<string, string>> Consume(string topic, int count)
     {
         var config = new ConsumerConfig

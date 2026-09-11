@@ -9,9 +9,6 @@ using System.Diagnostics;
 /// Logs the outcome and duration of every request. Applies to commands and queries alike, so it is
 /// constrained only by <see cref="IRequest{TResult}"/>.
 /// </summary>
-/// <typeparam name="TRequest">The request type.</typeparam>
-/// <typeparam name="TResult">The result type produced.</typeparam>
-/// <param name="logger">Logger instance.</param>
 public sealed class LoggingBehavior<TRequest, TResult>(
     ILogger<LoggingBehavior<TRequest, TResult>> logger
 ) : IPipelineBehavior<TRequest, TResult>

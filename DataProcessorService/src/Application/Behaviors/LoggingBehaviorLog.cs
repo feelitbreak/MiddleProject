@@ -16,11 +16,6 @@ using System.Diagnostics.CodeAnalysis;
 internal static class LoggingBehaviorLog
 {
     /// <summary>Logs a successfully handled request.</summary>
-    /// <typeparam name="TRequest">The request type.</typeparam>
-    /// <typeparam name="TResult">The result type.</typeparam>
-    /// <param name="logger">Logger instance.</param>
-    /// <param name="requestName">Name of the request type.</param>
-    /// <param name="elapsedMs">How long handling took, in milliseconds.</param>
     internal static void RequestSucceeded<TRequest, TResult>(
         this ILogger<LoggingBehavior<TRequest, TResult>> logger,
         string requestName,
@@ -40,13 +35,6 @@ internal static class LoggingBehaviorLog
     }
 
     /// <summary>Logs a request that returned a failed result.</summary>
-    /// <typeparam name="TRequest">The request type.</typeparam>
-    /// <typeparam name="TResult">The result type.</typeparam>
-    /// <param name="logger">Logger instance.</param>
-    /// <param name="requestName">Name of the request type.</param>
-    /// <param name="code">The error category.</param>
-    /// <param name="description">The error description.</param>
-    /// <param name="elapsedMs">How long handling took, in milliseconds.</param>
     internal static void RequestFailed<TRequest, TResult>(
         this ILogger<LoggingBehavior<TRequest, TResult>> logger,
         string requestName,
@@ -70,12 +58,6 @@ internal static class LoggingBehaviorLog
     }
 
     /// <summary>Logs a request whose handler threw.</summary>
-    /// <typeparam name="TRequest">The request type.</typeparam>
-    /// <typeparam name="TResult">The result type.</typeparam>
-    /// <param name="logger">Logger instance.</param>
-    /// <param name="exception">The exception thrown.</param>
-    /// <param name="requestName">Name of the request type.</param>
-    /// <param name="elapsedMs">How long handling took, in milliseconds.</param>
     internal static void RequestThrew<TRequest, TResult>(
         this ILogger<LoggingBehavior<TRequest, TResult>> logger,
         Exception exception,

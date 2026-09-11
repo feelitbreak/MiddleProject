@@ -21,12 +21,6 @@ using System.Diagnostics;
 /// why conflict-skipping insertion is load-bearing rather than a nicety.
 /// </para>
 /// </summary>
-/// <param name="scopeFactory">Factory for the per-batch dependency injection scope.</param>
-/// <param name="deadLetterProducer">Destination for messages that can never be processed.</param>
-/// <param name="heartbeat">Liveness signal read by the health check.</param>
-/// <param name="metrics">Business metrics recorder.</param>
-/// <param name="options">Kafka configuration options.</param>
-/// <param name="logger">Logger instance.</param>
 public sealed class KafkaConsumerService(
     IServiceScopeFactory scopeFactory,
     IDeadLetterProducer deadLetterProducer,
@@ -227,7 +221,6 @@ public sealed class KafkaConsumerService(
     /// <summary>
     /// Persists the batch, retrying transient failures with capped exponential backoff.
     /// </summary>
-    /// <returns><see langword="true"/> when the batch was stored.</returns>
     private async Task<bool> PersistWithRetriesAsync(
         IConsumer<byte[], byte[]> consumer,
         List<ReadingToIngest> readings,

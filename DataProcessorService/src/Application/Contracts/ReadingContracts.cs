@@ -44,18 +44,13 @@ public enum ReadingMetric
 }
 
 /// <summary>A sensor in the catalogue.</summary>
-/// <param name="id">Surrogate key.</param>
-/// <param name="name">The location the sensor reports from.</param>
-/// <param name="type">The kind of data it emits.</param>
 public sealed class SensorDto(int id, string name, SensorType type)
 {
     /// <summary>Gets the surrogate key.</summary>
     public int Id { get; } = id;
 
-    /// <summary>Gets the location the sensor reports from.</summary>
     public string Name { get; } = name;
 
-    /// <summary>Gets the kind of data the sensor emits.</summary>
     public SensorType Type { get; } = type;
 }
 
@@ -72,10 +67,8 @@ public sealed class ReadingDto
     /// <summary>Gets the surrogate key.</summary>
     public long Id { get; init; }
 
-    /// <summary>Gets the location the reading came from.</summary>
     public string SensorName { get; init; } = string.Empty;
 
-    /// <summary>Gets the kind of sensor that produced the reading.</summary>
     public SensorType SensorType { get; init; }
 
     /// <summary>Gets the instant the reading was collected, in UTC.</summary>
@@ -90,7 +83,6 @@ public sealed class ReadingDto
     /// <summary>Gets the relative humidity percentage, for air quality readings.</summary>
     public int? Humidity { get; init; }
 
-    /// <summary>Gets a value indicating whether motion was detected, for motion readings.</summary>
     public bool? MotionDetected { get; init; }
 
     /// <summary>Gets the energy consumption in kWh, for energy readings.</summary>
@@ -106,46 +98,32 @@ public sealed class AggregatePeriodDto
     /// <summary>Gets the start of the period, in UTC.</summary>
     public DateTimeOffset PeriodStart { get; init; }
 
-    /// <summary>Gets the location the readings came from.</summary>
     public string Location { get; init; } = string.Empty;
 
-    /// <summary>Gets how many readings fell into the period.</summary>
     public int Count { get; init; }
 
-    /// <summary>Gets the mean value over the period.</summary>
     public double Average { get; init; }
 
-    /// <summary>Gets the smallest value in the period.</summary>
     public double Minimum { get; init; }
 
-    /// <summary>Gets the largest value in the period.</summary>
     public double Maximum { get; init; }
 }
 
 /// <summary>A page of results.</summary>
-/// <typeparam name="T">The item type.</typeparam>
-/// <param name="items">The items on this page.</param>
-/// <param name="page">The one-based page number returned.</param>
-/// <param name="pageSize">The page size used.</param>
-/// <param name="totalCount">How many items match the filter in total.</param>
 public sealed class PagedResult<T>(IReadOnlyList<T> items, int page, int pageSize, int totalCount)
 {
-    /// <summary>Gets the items on this page.</summary>
     public IReadOnlyList<T> Items { get; } = items;
 
     /// <summary>Gets the one-based page number returned.</summary>
     public int Page { get; } = page;
 
-    /// <summary>Gets the page size used.</summary>
     public int PageSize { get; } = pageSize;
 
-    /// <summary>Gets how many items match the filter in total.</summary>
     public int TotalCount { get; } = totalCount;
 
     /// <summary>Gets how many pages the filter yields at this page size.</summary>
     public int TotalPages =>
         this.PageSize == 0 ? 0 : (int)Math.Ceiling(this.TotalCount / (double)this.PageSize);
 
-    /// <summary>Gets a value indicating whether a following page exists.</summary>
     public bool HasMore => this.Page < this.TotalPages;
 }

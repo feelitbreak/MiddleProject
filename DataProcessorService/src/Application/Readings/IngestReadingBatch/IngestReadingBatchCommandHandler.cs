@@ -8,8 +8,6 @@ using DataProcessorService.Domain.Common;
 /// Resolves each reading's sensor to a surrogate key and writes the batch in one idempotent
 /// statement.
 /// </summary>
-/// <param name="sensorRegistry">Resolves sensor natural keys to surrogate keys.</param>
-/// <param name="repository">Writes readings.</param>
 public sealed class IngestReadingBatchCommandHandler(
     ISensorRegistry sensorRegistry,
     IMeterReadingRepository repository

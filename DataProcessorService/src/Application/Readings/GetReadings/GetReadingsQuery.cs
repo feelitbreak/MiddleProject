@@ -7,12 +7,6 @@ using DataProcessorService.Domain.Common;
 using DataProcessorService.Domain.Enums;
 
 /// <summary>Lists readings newest-first, filtered and paged.</summary>
-/// <param name="location">Restrict to one location, or null for every location.</param>
-/// <param name="sensorType">Restrict to one sensor type, or null for every type.</param>
-/// <param name="from">Inclusive lower bound on collection time.</param>
-/// <param name="to">Exclusive upper bound on collection time.</param>
-/// <param name="page">One-based page number.</param>
-/// <param name="pageSize">How many readings per page.</param>
 public sealed class GetReadingsQuery(
     string? location,
     SensorType? sensorType,
@@ -22,16 +16,12 @@ public sealed class GetReadingsQuery(
     int pageSize
 ) : IQuery<PagedResult<ReadingDto>>
 {
-    /// <summary>The largest page a caller may request.</summary>
     public const int MaxPageSize = 500;
 
-    /// <summary>The page size used when a caller does not specify one.</summary>
     public const int DefaultPageSize = 50;
 
-    /// <summary>Gets the location filter.</summary>
     public string? Location { get; } = location;
 
-    /// <summary>Gets the sensor type filter.</summary>
     public SensorType? SensorType { get; } = sensorType;
 
     /// <summary>Gets the inclusive lower bound on collection time.</summary>
@@ -43,12 +33,10 @@ public sealed class GetReadingsQuery(
     /// <summary>Gets the one-based page number.</summary>
     public int Page { get; } = page;
 
-    /// <summary>Gets the page size.</summary>
     public int PageSize { get; } = pageSize;
 }
 
 /// <summary>Validates the request and returns the requested page.</summary>
-/// <param name="queries">Read-side access to stored readings.</param>
 public sealed class GetReadingsQueryHandler(IReadingQueries queries)
     : IQueryHandler<GetReadingsQuery, PagedResult<ReadingDto>>
 {

@@ -7,7 +7,6 @@ using Microsoft.EntityFrameworkCore;
 /// EF Core context for the meter readings schema. Code-first: the schema is owned by the entity
 /// configurations in this assembly and applied through migrations.
 /// </summary>
-/// <param name="options">Context options supplied by dependency injection.</param>
 public sealed class MeterReadingsDbContext(DbContextOptions<MeterReadingsDbContext> options)
     : DbContext(options)
 {

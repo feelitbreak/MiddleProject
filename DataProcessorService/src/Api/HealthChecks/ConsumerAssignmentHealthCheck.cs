@@ -11,7 +11,6 @@ using Microsoft.Extensions.Diagnostics.HealthChecks;
 /// than the condition it reports.
 /// </para>
 /// </summary>
-/// <param name="heartbeat">The consumer's liveness signal.</param>
 public sealed class ConsumerAssignmentHealthCheck(ConsumerHeartbeat heartbeat) : IHealthCheck
 {
     /// <inheritdoc/>

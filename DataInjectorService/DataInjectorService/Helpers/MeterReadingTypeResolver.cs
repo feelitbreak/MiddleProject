@@ -15,8 +15,6 @@ public static class MeterReadingTypeResolver
     /// Walks a list of raw readings (which still carry <see cref="RawJsonPayload"/> placeholders)
     /// and replaces each placeholder with the correctly typed concrete payload.
     /// </summary>
-    /// <param name="rawReadings">Readings as returned directly from JSON deserialization.</param>
-    /// <returns>A new list with all payloads fully resolved.</returns>
     public static IReadOnlyList<MeterReading> Resolve(IEnumerable<MeterReading> rawReadings)
     {
         var result = new List<MeterReading>();

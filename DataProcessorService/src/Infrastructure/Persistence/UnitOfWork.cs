@@ -7,7 +7,6 @@ using Microsoft.EntityFrameworkCore.Storage;
 /// <summary>
 /// Unit of work backed by an EF Core database transaction, scoped to one request.
 /// </summary>
-/// <param name="context">The scoped database context.</param>
 public sealed class UnitOfWork(MeterReadingsDbContext context) : IUnitOfWork, IAsyncDisposable
 {
     private IDbContextTransaction? transaction;

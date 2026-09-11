@@ -22,9 +22,6 @@ public sealed class KafkaFixture : IAsyncLifetime
     /// <summary>
     /// Publishes raw message bodies to a topic, mirroring what DataInjectorService produces.
     /// </summary>
-    /// <param name="topic">Topic to publish to.</param>
-    /// <param name="messages">Key and body pairs to publish.</param>
-    /// <returns>The delivery results, in publication order.</returns>
     public async Task<IReadOnlyList<DeliveryResult<byte[], byte[]>>> ProduceAsync(
         string topic,
         IEnumerable<(string Key, byte[] Body)> messages
@@ -60,10 +57,6 @@ public sealed class KafkaFixture : IAsyncLifetime
     }
 
     /// <summary>Reads up to <paramref name="count"/> messages from the start of a topic.</summary>
-    /// <param name="topic">Topic to read.</param>
-    /// <param name="count">How many messages to wait for.</param>
-    /// <param name="timeout">How long to wait in total.</param>
-    /// <returns>The messages consumed, which may be fewer than requested if the timeout elapses.</returns>
     public IReadOnlyList<ConsumeResult<byte[], byte[]>> Consume(
         string topic,
         int count,
@@ -99,10 +92,6 @@ public sealed class KafkaFixture : IAsyncLifetime
     }
 
     /// <summary>Reads the committed offsets for a consumer group on a topic.</summary>
-    /// <param name="topic">Topic to inspect.</param>
-    /// <param name="groupId">Consumer group to inspect.</param>
-    /// <param name="partitionCount">How many partitions to query.</param>
-    /// <returns>The committed offset per partition.</returns>
     public IReadOnlyDictionary<int, long> CommittedOffsets(
         string topic,
         string groupId,

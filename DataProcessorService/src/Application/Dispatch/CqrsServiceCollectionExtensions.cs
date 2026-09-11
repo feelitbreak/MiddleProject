@@ -14,9 +14,6 @@ public static class CqrsServiceCollectionExtensions
     /// Registers the dispatcher, then the handlers and behaviours declared by
     /// <paramref name="configure"/>.
     /// </summary>
-    /// <param name="services">The service collection.</param>
-    /// <param name="configure">Declares the handlers and pipeline behaviours.</param>
-    /// <returns>The service collection, for chaining.</returns>
     public static IServiceCollection AddCqrs(
         this IServiceCollection services,
         Action<CqrsBuilder> configure

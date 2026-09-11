@@ -18,8 +18,6 @@ using System.Diagnostics.CodeAnalysis;
 public static class Program
 {
     /// <summary>Builds, configures and runs the web application.</summary>
-    /// <param name="args">Command-line arguments forwarded to the host builder.</param>
-    /// <returns>A task that completes when the host shuts down.</returns>
     public static async Task Main(string[] args)
     {
         Log.Logger = new LoggerConfiguration().WriteTo.Console().CreateBootstrapLogger();

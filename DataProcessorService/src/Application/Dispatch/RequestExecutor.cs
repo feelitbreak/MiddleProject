@@ -8,8 +8,6 @@ using Microsoft.Extensions.DependencyInjection;
 /// Executes one request type by resolving its handler and wrapping it in the registered pipeline
 /// behaviours.
 /// </summary>
-/// <typeparam name="TRequest">The concrete request type.</typeparam>
-/// <typeparam name="TResult">The result type produced.</typeparam>
 internal sealed class RequestExecutor<TRequest, TResult> : IRequestExecutor<TResult>
     where TRequest : IRequest<TResult>
     where TResult : Result

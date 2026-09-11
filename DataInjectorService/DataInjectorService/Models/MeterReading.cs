@@ -63,7 +63,6 @@ public sealed class EnergyPayload : IMeterPayload
 /// <summary>Fallback payload used when the sensor type is not recognised.</summary>
 public sealed class UnknownPayload : IMeterPayload
 {
-    /// <summary>Gets or sets the raw JSON of the unrecognised payload for diagnostics.</summary>
     public string RawJson { get; set; } = string.Empty;
 }
 
@@ -73,7 +72,6 @@ public sealed class UnknownPayload : IMeterPayload
 /// </summary>
 public sealed class RawJsonPayload : IMeterPayload
 {
-    /// <summary>Gets or sets the captured JSON element.</summary>
     public JsonElement Element { get; set; }
 }
 

@@ -17,8 +17,6 @@ using System.Text.Json;
 public static class MeterReadingMessageDecoder
 {
     /// <summary>Decodes one message body.</summary>
-    /// <param name="value">The raw message bytes, as received from the broker.</param>
-    /// <returns>The decoded reading, or a permanent error describing why it cannot be decoded.</returns>
     public static Result<ReadingToIngest> Decode(ReadOnlySpan<byte> value)
     {
         if (value.IsEmpty)

@@ -16,15 +16,10 @@ using System.Text.Json;
 public static class SensorTypeNames
 {
     /// <summary>Converts a <see cref="SensorType"/> to its stored spelling.</summary>
-    /// <param name="type">The sensor type.</param>
-    /// <returns>The stored spelling, for example <c>air_quality</c>.</returns>
     public static string ToName(SensorType type) =>
         JsonNamingPolicy.SnakeCaseLower.ConvertName(type.ToString());
 
     /// <summary>Converts a stored spelling back to a <see cref="SensorType"/>.</summary>
-    /// <param name="name">The stored spelling.</param>
-    /// <returns>The matching sensor type.</returns>
-    /// <exception cref="ArgumentOutOfRangeException">The value is not a known sensor type name.</exception>
     public static SensorType FromName(string name) =>
         TryFromName(name, out var type)
             ? type
@@ -35,9 +30,6 @@ public static class SensorTypeNames
     /// Used on the ingestion path, where an unrecognised type is a poison message to be
     /// dead-lettered rather than an exceptional condition.
     /// </summary>
-    /// <param name="name">The candidate spelling.</param>
-    /// <param name="type">The matching sensor type, when recognised.</param>
-    /// <returns><see langword="true"/> when <paramref name="name"/> is a known sensor type.</returns>
     public static bool TryFromName(string? name, out SensorType type)
     {
         type = default;

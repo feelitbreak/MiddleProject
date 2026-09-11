@@ -5,9 +5,6 @@ using DataProcessorService.Domain.Common;
 /// <summary>
 /// The remainder of the pipeline, ending in the request's handler.
 /// </summary>
-/// <typeparam name="TResult">The result type produced.</typeparam>
-/// <param name="cancellationToken">Token used to cancel the operation.</param>
-/// <returns>The outcome of the rest of the pipeline.</returns>
 public delegate Task<TResult> RequestHandlerDelegate<TResult>(CancellationToken cancellationToken)
     where TResult : Result;
 
@@ -19,17 +16,11 @@ public delegate Task<TResult> RequestHandlerDelegate<TResult>(CancellationToken 
 /// query, because the dependency injection container skips constraint-violating closed types.
 /// </para>
 /// </summary>
-/// <typeparam name="TRequest">The request type this behaviour applies to.</typeparam>
-/// <typeparam name="TResult">The result type produced.</typeparam>
 public interface IPipelineBehavior<in TRequest, TResult>
     where TRequest : IRequest<TResult>
     where TResult : Result
 {
     /// <summary>Runs the behaviour around the rest of the pipeline.</summary>
-    /// <param name="request">The request being handled.</param>
-    /// <param name="next">The remainder of the pipeline.</param>
-    /// <param name="cancellationToken">Token used to cancel the operation.</param>
-    /// <returns>The outcome of the pipeline.</returns>
     Task<TResult> HandleAsync(
         TRequest request,
         RequestHandlerDelegate<TResult> next,

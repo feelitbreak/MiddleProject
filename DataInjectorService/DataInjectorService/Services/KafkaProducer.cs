@@ -43,9 +43,6 @@ public sealed class KafkaProducer : IKafkaProducer
     /// <summary>
     /// Initializes a new instance of the <see cref="KafkaProducer"/> class.
     /// </summary>
-    /// <param name="options">Kafka configuration options.</param>
-    /// <param name="logger">Logger instance.</param>
-    /// <param name="metrics">Business metrics recorder.</param>
     public KafkaProducer(
         IOptions<KafkaOptions> options,
         ILogger<KafkaProducer> logger,

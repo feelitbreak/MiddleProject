@@ -11,7 +11,6 @@ using DataProcessorService.Domain.Common;
 public sealed class GetLatestReadingsQuery : IQuery<IReadOnlyList<ReadingDto>>;
 
 /// <summary>Handles <see cref="GetLatestReadingsQuery"/>.</summary>
-/// <param name="queries">Read-side access to stored readings.</param>
 public sealed class GetLatestReadingsQueryHandler(IReadingQueries queries)
     : IQueryHandler<GetLatestReadingsQuery, IReadOnlyList<ReadingDto>>
 {

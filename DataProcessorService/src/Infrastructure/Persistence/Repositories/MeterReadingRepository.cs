@@ -23,7 +23,6 @@ using Npgsql;
 /// one statement, with NULLs in the columns that do not apply.
 /// </para>
 /// </summary>
-/// <param name="context">The database context supplying the connection and ambient transaction.</param>
 public sealed class MeterReadingRepository(MeterReadingsDbContext context) : IMeterReadingRepository
 {
     /// <summary>

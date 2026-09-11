@@ -17,9 +17,6 @@ using DataProcessorService.Domain.Common;
 /// transient failure as retryable, and retrying a half-applied batch would be unsound.
 /// </para>
 /// </summary>
-/// <typeparam name="TRequest">The command type.</typeparam>
-/// <typeparam name="TResult">The result type produced.</typeparam>
-/// <param name="unitOfWork">The unit of work for the current scope.</param>
 public sealed class UnitOfWorkBehavior<TRequest, TResult>(IUnitOfWork unitOfWork)
     : IPipelineBehavior<TRequest, TResult>
     where TRequest : IRequest<TResult>, IBaseCommand

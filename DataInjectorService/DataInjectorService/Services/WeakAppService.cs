@@ -14,9 +14,6 @@ using System.Text.Json;
 /// distinguish between success, rate-limiting, and general failure.
 /// <para>Uses <see cref="IHttpClientFactory"/> so that socket lifetimes are managed by the framework.</para>
 /// </summary>
-/// <param name="httpClientFactory">Factory used to create named HTTP clients.</param>
-/// <param name="options">WeakApp configuration options.</param>
-/// <param name="logger">Logger instance.</param>
 public sealed class WeakAppService(
     IHttpClientFactory httpClientFactory,
     IOptions<WeakAppOptions> options,

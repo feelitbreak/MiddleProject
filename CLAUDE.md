@@ -23,7 +23,11 @@ contract is preferred over coupling two services' builds.
 - .NET 10. `TreatWarningsAsErrors` is on; builds must be warning-free.
 - File-scoped namespaces, usings **inside** the namespace, `System.*` last.
 - `sealed` classes, primary constructors for DI, `this.` on fields. No records.
-- XML docs on public members. Comments explain *why*, not *what*.
+- **Document at an intermediate level.** Most code should be readable from class and method names
+  alone. Comment what the names cannot carry: a unit, an invariant, a non-obvious constraint, or
+  why an unusual approach was chosen over the obvious one. Skip XML docs that restate the
+  signature — no `<param>` for a self-evident parameter, no `/// Gets the location` on `Location`.
+  A file that is more comment than code is a smell.
 - `Result`/`Error` for expected failures; exceptions for bugs.
 - Serilog, OpenTelemetry metrics at `/metrics`, health checks at `/health/live` and `/health/ready`.
 - EF Core code-first. Read-only queries use `AsNoTracking()`; any `Take`/`Skip` needs an `OrderBy`.

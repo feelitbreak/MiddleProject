@@ -12,7 +12,6 @@ using System.ComponentModel.DataAnnotations;
 /// </remarks>
 public sealed class KafkaOptions : IValidatableObject
 {
-    /// <summary>Configuration section this type binds from.</summary>
     public const string SectionName = "Kafka";
 
     /// <summary>Gets or sets the Kafka bootstrap servers (comma-separated).</summary>
@@ -37,20 +36,13 @@ public sealed class KafkaOptions : IValidatableObject
     [Range(1, 10_000)]
     public int MaxBatchSize { get; set; } = 500;
 
-    /// <summary>
-    /// Gets or sets how long to keep accumulating a partial batch before writing it anyway, in
-    /// milliseconds. Bounds end-to-end latency when the topic is quiet.
-    /// </summary>
+    /// <summary>How long to hold a partial batch. Bounds latency when the topic is quiet.</summary>
     [Range(10, 60_000)]
     public int BatchLingerMs { get; set; } = 2_000;
 
     /// <summary>
-    /// Gets or sets how many times a batch that failed transiently is retried before the whole
-    /// batch is dead-lettered.
-    /// <para>
-    /// Bounded on purpose. Retrying indefinitely means one misclassified permanent failure stops
-    /// the partition forever with nothing to alert on.
-    /// </para>
+    /// Retries before a batch is dead-lettered. Bounded on purpose: retrying forever means one
+    /// misclassified permanent failure stops the partition with nothing to alert on.
     /// </summary>
     [Range(1, 100)]
     public int MaxBatchAttempts { get; set; } = 5;
@@ -63,10 +55,7 @@ public sealed class KafkaOptions : IValidatableObject
     [Range(100, 600_000)]
     public int RetryMaxDelayMs { get; set; } = 30_000;
 
-    /// <summary>
-    /// Gets or sets the maximum interval between consumer polls, in milliseconds. Exceeding it
-    /// makes the broker consider this consumer dead and rebalance its partitions away.
-    /// </summary>
+    /// <summary>Exceeding this has the broker declare us dead and rebalance our partitions away.</summary>
     [Range(10_000, 3_600_000)]
     public int MaxPollIntervalMs { get; set; } = 300_000;
 

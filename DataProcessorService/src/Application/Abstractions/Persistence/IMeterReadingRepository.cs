@@ -5,20 +5,12 @@ public interface IMeterReadingRepository
 {
     /// <summary>
     /// Inserts <paramref name="rows"/>, skipping any that collide with an existing
-    /// (sensor, collection instant) pair.
+    /// (sensor, collection instant) pair, and returns how many were actually written.
     /// <para>
-    /// This is what makes consumption idempotent: Kafka delivers at least once, and the window
-    /// between committing the database transaction and committing the offset means a crash
-    /// redelivers a batch that was already written. Skipping collisions turns that redelivery into
-    /// a no-op.
+    /// This is what makes consumption idempotent. Kafka delivers at least once, and a crash between
+    /// the database commit and the offset commit redelivers a batch that is already stored.
     /// </para>
     /// </summary>
-    /// <param name="rows">The rows to insert.</param>
-    /// <param name="cancellationToken">Token used to cancel the operation.</param>
-    /// <returns>
-    /// The number of rows actually inserted. Subtracting it from the input count gives the number
-    /// of duplicates skipped.
-    /// </returns>
     Task<int> InsertIgnoringDuplicatesAsync(
         IReadOnlyList<MeterReadingRow> rows,
         CancellationToken cancellationToken

@@ -39,8 +39,6 @@ public static class TransientFailureClassifier
     ];
 
     /// <summary>Determines whether the given exception is worth retrying.</summary>
-    /// <param name="exception">The exception thrown while persisting.</param>
-    /// <returns><see langword="true"/> when a retry could plausibly succeed.</returns>
     public static bool IsTransient(Exception? exception)
     {
         for (var current = exception; current is not null; current = current.InnerException)

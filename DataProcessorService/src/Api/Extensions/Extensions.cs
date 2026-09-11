@@ -39,7 +39,6 @@ public static class Extensions
     /// parameter binding accepts, and columns that do not apply to a reading's type are omitted
     /// rather than serialised as nulls.
     /// </summary>
-    /// <param name="services">The service collection.</param>
     public static void AddJsonConfiguration(this IServiceCollection services)
     {
         services.ConfigureHttpJsonOptions(options =>
@@ -54,7 +53,6 @@ public static class Extensions
     }
 
     /// <summary>Registers Swagger/OpenAPI generation for the service.</summary>
-    /// <param name="services">The service collection.</param>
     public static void AddSwaggerGenConfiguration(this IServiceCollection services)
     {
         // Minimal APIs do not register the API explorer implicitly, and Swashbuckle's generator
@@ -79,8 +77,6 @@ public static class Extensions
     /// Registers a CORS policy that allows localhost (in development) and any explicitly
     /// configured origins.
     /// </summary>
-    /// <param name="services">The service collection.</param>
-    /// <param name="configuration">Application configuration.</param>
     public static void AddCorsConfiguration(
         this IServiceCollection services,
         IConfigurationManager configuration
@@ -128,8 +124,6 @@ public static class Extensions
     /// Registers the database context and the persistence abstractions the application layer
     /// depends on.
     /// </summary>
-    /// <param name="services">The service collection.</param>
-    /// <param name="configuration">Application configuration.</param>
     public static void AddPersistence(
         this IServiceCollection services,
         IConfiguration configuration
@@ -172,8 +166,6 @@ public static class Extensions
     /// <summary>
     /// Registers the Kafka consumer, the dead-letter producer and the consumer's liveness signal.
     /// </summary>
-    /// <param name="services">The service collection.</param>
-    /// <param name="configuration">Application configuration.</param>
     public static void AddMessaging(
         this IServiceCollection services,
         IConfiguration configuration
@@ -197,7 +189,6 @@ public static class Extensions
     /// performs the scan and asserts this list is complete.
     /// </para>
     /// </summary>
-    /// <param name="services">The service collection.</param>
     public static void AddCqrsHandlers(this IServiceCollection services)
     {
         services.TryAddSingleton(TimeProvider.System);
@@ -235,7 +226,6 @@ public static class Extensions
     /// <summary>
     /// Registers liveness and readiness health checks.
     /// </summary>
-    /// <param name="services">The service collection.</param>
     public static void AddHealthCheckConfiguration(this IServiceCollection services)
     {
         services
@@ -249,7 +239,6 @@ public static class Extensions
     /// Registers the custom <see cref="DataProcessorMetrics"/> meter along with ASP.NET Core and
     /// runtime instrumentation, exported for Prometheus to scrape.
     /// </summary>
-    /// <param name="services">The service collection.</param>
     public static void AddObservability(this IServiceCollection services)
     {
         services.AddSingleton<DataProcessorMetrics>();
@@ -281,8 +270,6 @@ public static class Extensions
     /// be killed part-way through start-up as a result.
     /// </para>
     /// </summary>
-    /// <param name="app">The built application.</param>
-    /// <returns>A task that completes once migrations have been applied.</returns>
     public static async Task ApplyMigrationsIfConfiguredAsync(this WebApplication app)
     {
         var options = app.Services.GetRequiredService<

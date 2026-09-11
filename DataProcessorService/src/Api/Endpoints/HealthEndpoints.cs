@@ -6,32 +6,24 @@ using System.Diagnostics.CodeAnalysis;
 /// <summary>The result of one health check.</summary>
 public sealed class HealthCheckEntryDto
 {
-    /// <summary>Gets the check's registered name.</summary>
     public string Name { get; init; } = string.Empty;
 
-    /// <summary>Gets the status: Healthy, Degraded or Unhealthy.</summary>
     public string Status { get; init; } = string.Empty;
 
-    /// <summary>Gets the check's own description of the result.</summary>
     public string? Description { get; init; }
 
-    /// <summary>Gets how long the check took, in milliseconds.</summary>
     public double DurationMs { get; init; }
 
-    /// <summary>Gets any diagnostic values the check reported.</summary>
     public IReadOnlyDictionary<string, object>? Data { get; init; }
 }
 
 /// <summary>The overall health report.</summary>
 public sealed class HealthReportDto
 {
-    /// <summary>Gets the worst status across every check.</summary>
     public string Status { get; init; } = string.Empty;
 
-    /// <summary>Gets how long the whole report took, in milliseconds.</summary>
     public double TotalDurationMs { get; init; }
 
-    /// <summary>Gets the individual check results.</summary>
     public IReadOnlyList<HealthCheckEntryDto> Checks { get; init; } = [];
 }
 
@@ -49,8 +41,6 @@ public sealed class HealthReportDto
 public static class HealthEndpoints
 {
     /// <summary>Maps the liveness and readiness endpoints.</summary>
-    /// <param name="app">The application to map onto.</param>
-    /// <returns>The application, for chaining.</returns>
     public static WebApplication MapHealthEndpoints(this WebApplication app)
     {
         var health = app.MapGroup("/health").WithTags("Health");

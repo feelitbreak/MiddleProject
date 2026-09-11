@@ -8,7 +8,6 @@ using System.Diagnostics.CodeAnalysis;
 /// <see cref="Result"/> or <see cref="Result{T}"/>, which is what lets the dispatcher work through
 /// a single non-generic executor abstraction rather than reflecting over generic arguments.
 /// </summary>
-/// <typeparam name="TResult">The result type the request produces.</typeparam>
 [SuppressMessage(
     "Major Code Smell",
     "S2326:Unused type parameters should be removed",
@@ -30,9 +29,7 @@ public interface IBaseCommand;
 public interface ICommand : IRequest<Result>, IBaseCommand;
 
 /// <summary>A command that mutates state and returns a value.</summary>
-/// <typeparam name="TValue">The value returned on success.</typeparam>
 public interface ICommand<TValue> : IRequest<Result<TValue>>, IBaseCommand;
 
 /// <summary>A read-only query.</summary>
-/// <typeparam name="TValue">The value returned on success.</typeparam>
 public interface IQuery<TValue> : IRequest<Result<TValue>>;

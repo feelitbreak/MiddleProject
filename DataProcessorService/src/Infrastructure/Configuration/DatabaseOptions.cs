@@ -10,7 +10,6 @@ using System.Diagnostics.CodeAnalysis;
 [ExcludeFromCodeCoverage(Justification = "Configuration binding target, exercised through the options validation tests.")]
 public sealed class DatabaseOptions
 {
-    /// <summary>Configuration section this type binds from.</summary>
     public const string SectionName = "Database";
 
     /// <summary>Gets or sets the Npgsql connection string.</summary>

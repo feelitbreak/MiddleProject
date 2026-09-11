@@ -13,7 +13,6 @@ using DataProcessorService.Domain.Common;
 public sealed class GetSensorsQuery : IQuery<IReadOnlyList<SensorDto>>;
 
 /// <summary>Handles <see cref="GetSensorsQuery"/>.</summary>
-/// <param name="queries">Read-side access to the sensor catalogue.</param>
 public sealed class GetSensorsQueryHandler(ISensorQueries queries)
     : IQueryHandler<GetSensorsQuery, IReadOnlyList<SensorDto>>
 {

@@ -20,11 +20,6 @@ using System.Diagnostics;
 /// </list>
 /// </para>
 /// </summary>
-/// <param name="weakAppService">Service for fetching meter readings.</param>
-/// <param name="kafkaProducer">Producer for publishing readings to Kafka.</param>
-/// <param name="options">WeakApp configuration options.</param>
-/// <param name="logger">Logger instance.</param>
-/// <param name="metrics">Business metrics recorder.</param>
 public sealed class MeterPollingService(
     IWeakAppService weakAppService,
     IKafkaProducer kafkaProducer,

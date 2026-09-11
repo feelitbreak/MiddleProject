@@ -15,7 +15,6 @@ using System.Diagnostics.CodeAnalysis;
 public static class Extensions
 {
     /// <summary>Registers Swagger/OpenAPI generation for the service.</summary>
-    /// <param name="services">The service collection.</param>
     public static void AddSwaggerGenConfiguration(this IServiceCollection services)
     {
         // Controllers bring their own API explorer but minimal APIs do not, so without this the
@@ -32,8 +31,6 @@ public static class Extensions
     /// Registers a CORS policy that allows localhost (in development) and any explicitly
     /// configured origins.
     /// </summary>
-    /// <param name="services">The service collection.</param>
-    /// <param name="configuration">Application configuration.</param>
     public static void AddCorsConfiguration(
         this IServiceCollection services,
         IConfigurationManager configuration
@@ -82,8 +79,6 @@ public static class Extensions
     /// WeakApp (used via <see cref="IHttpClientFactory"/>), the <see cref="IWeakAppService"/>
     /// singleton, the Kafka producer singleton, and the background polling hosted service.
     /// </summary>
-    /// <param name="services">The service collection.</param>
-    /// <param name="configuration">Application configuration.</param>
     public static void AddDataInjectorServices(
         this IServiceCollection services,
         IConfiguration configuration
@@ -144,7 +139,6 @@ public static class Extensions
     /// Registers ASP.NET Core health checks: liveness (always healthy) and a readiness
     /// check that probes the WeakApp <c>/health</c> endpoint.
     /// </summary>
-    /// <param name="services">The service collection.</param>
     public static void AddHealthCheckConfiguration(this IServiceCollection services)
     {
         services.AddHealthChecks().AddCheck<WeakAppHealthCheck>("weakapp", tags: ["ready"]);
@@ -154,7 +148,6 @@ public static class Extensions
     /// Registers the custom <see cref="DataInjectorMetrics"/> meter along with ASP.NET Core,
     /// HttpClient and runtime instrumentation, exported for Prometheus to scrape.
     /// </summary>
-    /// <param name="services">The service collection.</param>
     public static void AddObservability(this IServiceCollection services)
     {
         services.AddSingleton<DataInjectorMetrics>();

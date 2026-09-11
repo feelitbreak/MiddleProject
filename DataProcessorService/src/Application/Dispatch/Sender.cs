@@ -7,8 +7,6 @@ using DataProcessorService.Domain.Common;
 /// Default <see cref="ISender"/>: looks the request's runtime type up in the registry and hands
 /// off to the matching executor.
 /// </summary>
-/// <param name="registry">The executor registry built at startup.</param>
-/// <param name="provider">The service provider used to resolve handlers and behaviours.</param>
 public sealed class Sender(RequestExecutorRegistry registry, IServiceProvider provider) : ISender
 {
     /// <inheritdoc/>

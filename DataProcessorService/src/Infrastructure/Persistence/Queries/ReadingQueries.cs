@@ -8,7 +8,6 @@ using Microsoft.EntityFrameworkCore;
 /// <summary>
 /// Read-side queries over stored readings, projected straight into response contracts.
 /// </summary>
-/// <param name="context">The scoped database context.</param>
 public sealed class ReadingQueries(MeterReadingsDbContext context) : IReadingQueries
 {
     /// <summary>

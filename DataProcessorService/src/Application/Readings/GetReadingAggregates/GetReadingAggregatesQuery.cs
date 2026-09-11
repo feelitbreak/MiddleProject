@@ -12,11 +12,6 @@ using DataProcessorService.Domain.Common;
 /// that the endpoint is useful with nothing but a metric.
 /// </para>
 /// </summary>
-/// <param name="metric">The numeric series to aggregate.</param>
-/// <param name="interval">How long each period covers.</param>
-/// <param name="from">Inclusive lower bound, or null for one interval-appropriate window back.</param>
-/// <param name="to">Exclusive upper bound, or null for now.</param>
-/// <param name="location">Restrict to one location, or null for every location.</param>
 public sealed class GetReadingAggregatesQuery(
     ReadingMetric metric,
     AggregationInterval interval,
@@ -25,7 +20,6 @@ public sealed class GetReadingAggregatesQuery(
     string? location
 ) : IQuery<IReadOnlyList<AggregatePeriodDto>>
 {
-    /// <summary>The widest time range a single aggregation may span.</summary>
     public static readonly TimeSpan MaxRange = TimeSpan.FromDays(90);
 
     /// <summary>
@@ -39,10 +33,8 @@ public sealed class GetReadingAggregatesQuery(
     /// </summary>
     public const int MaxPeriods = 2_000;
 
-    /// <summary>Gets the metric being aggregated.</summary>
     public ReadingMetric Metric { get; } = metric;
 
-    /// <summary>Gets how long each period covers.</summary>
     public AggregationInterval Interval { get; } = interval;
 
     /// <summary>Gets the inclusive lower bound, if the caller supplied one.</summary>
@@ -51,7 +43,6 @@ public sealed class GetReadingAggregatesQuery(
     /// <summary>Gets the exclusive upper bound, if the caller supplied one.</summary>
     public DateTimeOffset? To { get; } = to;
 
-    /// <summary>Gets the location filter.</summary>
     public string? Location { get; } = location;
 }
 
@@ -62,8 +53,6 @@ public sealed class GetReadingAggregatesQuery(
 /// hourly periods since 1970 would be an unbounded scan returning hundreds of thousands of rows.
 /// </para>
 /// </summary>
-/// <param name="queries">Read-side access to stored readings.</param>
-/// <param name="timeProvider">Clock used to resolve a default upper bound.</param>
 public sealed class GetReadingAggregatesQueryHandler(
     IReadingQueries queries,
     TimeProvider timeProvider

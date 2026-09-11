@@ -36,7 +36,6 @@ public sealed class Error
     /// <summary>
     /// Creates a <see cref="ErrorCode.RateLimited"/> error carrying the back-off duration.
     /// </summary>
-    /// <param name="retryAfter">How long callers should wait before the next attempt.</param>
     public static Error CreateRateLimited(TimeSpan retryAfter) =>
         new(ErrorCode.RateLimited, "The external API enforced rate limiting.", retryAfter);
 

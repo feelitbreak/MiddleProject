@@ -44,7 +44,6 @@ public sealed class PostgresFixture : IAsyncLifetime
     }
 
     /// <summary>Creates a context bound to the container.</summary>
-    /// <returns>A new context.</returns>
     public MeterReadingsDbContext CreateContext() =>
         new(
             new DbContextOptionsBuilder<MeterReadingsDbContext>()
@@ -55,7 +54,6 @@ public sealed class PostgresFixture : IAsyncLifetime
     /// <summary>
     /// Removes every row so that each test starts from a known state, while keeping the schema.
     /// </summary>
-    /// <returns>A task that completes once the tables are empty.</returns>
     public async Task ResetAsync()
     {
         await using var context = this.CreateContext();

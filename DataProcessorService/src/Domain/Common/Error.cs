@@ -27,20 +27,16 @@ public sealed class Error
     public bool IsRetryable => this.Code == ErrorCode.Transient;
 
     /// <summary>Creates a <see cref="ErrorCode.Transient"/> error.</summary>
-    /// <param name="description">What failed, for logging.</param>
     public static Error CreateTransient(string description) => new(ErrorCode.Transient, description);
 
     /// <summary>Creates a <see cref="ErrorCode.Permanent"/> error.</summary>
-    /// <param name="description">Why the operation can never succeed, for logging.</param>
     public static Error CreatePermanent(string description) => new(ErrorCode.Permanent, description);
 
     /// <summary>Creates a <see cref="ErrorCode.Validation"/> error.</summary>
-    /// <param name="description">Which argument is invalid and why.</param>
     public static Error CreateValidation(string description) =>
         new(ErrorCode.Validation, description);
 
     /// <summary>Creates a <see cref="ErrorCode.NotFound"/> error.</summary>
-    /// <param name="description">Which entity was not found.</param>
     public static Error CreateNotFound(string description) => new(ErrorCode.NotFound, description);
 
     /// <summary>Returns a string representation of the error for logging.</summary>

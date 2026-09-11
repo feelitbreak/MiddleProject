@@ -21,7 +21,6 @@ using System.Collections.Concurrent;
 /// unique violation and re-reads the row the winner committed.
 /// </para>
 /// </summary>
-/// <param name="scopeFactory">Factory used to obtain a scoped database context.</param>
 public sealed class SensorRegistry(IServiceScopeFactory scopeFactory) : ISensorRegistry
 {
     private const string UniqueViolation = "23505";

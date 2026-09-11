@@ -15,11 +15,6 @@ using System.Text;
 public interface IDeadLetterProducer : IAsyncDisposable
 {
     /// <summary>Moves one message to the dead-letter topic.</summary>
-    /// <param name="message">The original message, forwarded unchanged.</param>
-    /// <param name="reason">A short machine-readable reason, used as a metric tag.</param>
-    /// <param name="detail">A human-readable explanation, carried as a header.</param>
-    /// <param name="cancellationToken">Token used to cancel the operation.</param>
-    /// <returns>A task that completes once the broker has acknowledged the message.</returns>
     Task SendAsync(
         ConsumeResult<byte[], byte[]> message,
         string reason,
@@ -63,9 +58,6 @@ public sealed class DeadLetterProducer : IDeadLetterProducer
     /// <summary>
     /// Initializes a new instance of the <see cref="DeadLetterProducer"/> class.
     /// </summary>
-    /// <param name="options">Kafka configuration options.</param>
-    /// <param name="logger">Logger instance.</param>
-    /// <param name="metrics">Business metrics recorder.</param>
     public DeadLetterProducer(
         IOptions<KafkaOptions> options,
         ILogger<DeadLetterProducer> logger,

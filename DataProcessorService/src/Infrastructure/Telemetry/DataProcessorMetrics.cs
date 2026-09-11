@@ -13,7 +13,6 @@ using System.Diagnostics.Metrics;
 /// </summary>
 public sealed class DataProcessorMetrics : IDisposable
 {
-    /// <summary>Name of the meter registered with OpenTelemetry.</summary>
     public const string MeterName = "DataProcessorService";
 
     private readonly Meter meter;
@@ -78,28 +77,21 @@ public sealed class DataProcessorMetrics : IDisposable
         );
     }
 
-    /// <summary>Number of messages consumed from the readings topic.</summary>
     public Counter<long> MessagesConsumed { get; }
 
-    /// <summary>Number of batches successfully persisted and acknowledged.</summary>
     public Counter<long> BatchesProcessed { get; }
 
-    /// <summary>Number of batch attempts that failed transiently and were retried.</summary>
     public Counter<long> BatchRetries { get; }
 
-    /// <summary>Number of messages moved to the dead-letter topic, tagged by reason.</summary>
     public Counter<long> DeadLetteredMessages { get; }
 
-    /// <summary>Number of readings written to the database.</summary>
     public Counter<long> ReadingsInserted { get; }
 
     /// <summary>Number of readings skipped because they were already stored.</summary>
     public Counter<long> DuplicatesSkipped { get; }
 
-    /// <summary>Duration, in seconds, of a full batch cycle.</summary>
     public Histogram<double> BatchDuration { get; }
 
-    /// <summary>Duration, in seconds, of the ingestion statement.</summary>
     public Histogram<double> DatabaseWriteDuration { get; }
 
     /// <summary>

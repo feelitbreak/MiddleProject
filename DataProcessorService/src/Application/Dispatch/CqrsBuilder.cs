@@ -14,7 +14,6 @@ using Microsoft.Extensions.DependencyInjection;
 /// here, so the guarantee is kept without the runtime cost.
 /// </para>
 /// </summary>
-/// <param name="services">The service collection being configured.</param>
 public sealed class CqrsBuilder(IServiceCollection services)
 {
     private readonly Dictionary<Type, object> executors = [];
@@ -23,9 +22,6 @@ public sealed class CqrsBuilder(IServiceCollection services)
     internal IReadOnlyDictionary<Type, object> Executors => this.executors;
 
     /// <summary>Registers a handler for a command that returns no value.</summary>
-    /// <typeparam name="TCommand">The command type.</typeparam>
-    /// <typeparam name="THandler">The handler implementation.</typeparam>
-    /// <returns>This builder, for chaining.</returns>
     public CqrsBuilder AddCommandHandler<TCommand, THandler>()
         where TCommand : ICommand
         where THandler : class, ICommandHandler<TCommand>
@@ -36,10 +32,6 @@ public sealed class CqrsBuilder(IServiceCollection services)
     }
 
     /// <summary>Registers a handler for a command that returns a value.</summary>
-    /// <typeparam name="TCommand">The command type.</typeparam>
-    /// <typeparam name="TValue">The value returned on success.</typeparam>
-    /// <typeparam name="THandler">The handler implementation.</typeparam>
-    /// <returns>This builder, for chaining.</returns>
     public CqrsBuilder AddCommandHandler<TCommand, TValue, THandler>()
         where TCommand : ICommand<TValue>
         where THandler : class, ICommandHandler<TCommand, TValue>
@@ -50,10 +42,6 @@ public sealed class CqrsBuilder(IServiceCollection services)
     }
 
     /// <summary>Registers a handler for a query.</summary>
-    /// <typeparam name="TQuery">The query type.</typeparam>
-    /// <typeparam name="TValue">The value returned on success.</typeparam>
-    /// <typeparam name="THandler">The handler implementation.</typeparam>
-    /// <returns>This builder, for chaining.</returns>
     public CqrsBuilder AddQueryHandler<TQuery, TValue, THandler>()
         where TQuery : IQuery<TValue>
         where THandler : class, IQueryHandler<TQuery, TValue>
@@ -69,8 +57,6 @@ public sealed class CqrsBuilder(IServiceCollection services)
     /// first. A behaviour's own generic constraints decide which requests it applies to, because
     /// the container skips closed types that violate them.
     /// </summary>
-    /// <param name="openGenericBehaviorType">The open generic behaviour type.</param>
-    /// <returns>This builder, for chaining.</returns>
     public CqrsBuilder AddBehavior(Type openGenericBehaviorType)
     {
         services.AddScoped(typeof(IPipelineBehavior<,>), openGenericBehaviorType);

@@ -34,11 +34,9 @@ public sealed class GetReadingsRequest
     /// <summary>Gets or sets the one-based page number. Defaults to the first page.</summary>
     public int? Page { get; set; }
 
-    /// <summary>Gets or sets the page size. Defaults to <see cref="GetReadingsQuery.DefaultPageSize"/>.</summary>
     public int? PageSize { get; set; }
 
     /// <summary>Converts the bound request into the query to dispatch.</summary>
-    /// <returns>The query.</returns>
     public GetReadingsQuery ToQuery() =>
         new(
             this.Location,
@@ -60,8 +58,6 @@ public sealed class GetReadingsRequest
 public static class ReadingEndpoints
 {
     /// <summary>Maps every read endpoint.</summary>
-    /// <param name="app">The application to map onto.</param>
-    /// <returns>The application, for chaining.</returns>
     public static WebApplication MapReadingEndpoints(this WebApplication app)
     {
         var readings = app.MapGroup("/api/readings").WithTags("Readings");

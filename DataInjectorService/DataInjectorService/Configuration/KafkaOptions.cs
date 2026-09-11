@@ -23,36 +23,22 @@ public sealed class KafkaOptions : IValidatableObject
     [Required(AllowEmptyStrings = false)]
     public string MeterReadingsTopic { get; set; } = "meter-readings";
 
-    /// <summary>
-    /// Gets or sets the number of acknowledgements required before a produce call is considered
-    /// successful. <see cref="Acks.All"/> waits for all in-sync replicas (safest),
-    /// <see cref="Acks.Leader"/> waits for the partition leader only, and
-    /// <see cref="Acks.None"/> is fire-and-forget.
-    /// <para>
-    /// Bound by name and case-insensitively, so "All", "all" and "ALL" are equivalent.
-    /// </para>
-    /// </summary>
+    /// <summary>Acknowledgements required before a produce succeeds. Bound case-insensitively.</summary>
     public Acks Acks { get; set; } = Acks.All;
 
     /// <summary>
-    /// Gets or sets the compression codec applied to produced message batches. Meter readings are
-    /// small, highly repetitive JSON documents, so compression materially reduces both broker
-    /// storage and consumer fetch volume.
+    /// Readings are small, repetitive JSON, so compression cuts both broker storage and
+    /// consumer fetch volume substantially.
     /// </summary>
     public CompressionType CompressionType { get; set; } = CompressionType.Zstd;
 
-    /// <summary>
-    /// Gets or sets the maximum number of in-flight produce requests per connection.
-    /// Capped at 5 when <see cref="EnableIdempotence"/> is enabled — see
-    /// <see cref="Validate"/>.
-    /// </summary>
+    /// <summary>Capped at 5 while <see cref="EnableIdempotence"/> is on, per <see cref="Validate"/>.</summary>
     [Range(1, 1_000_000)]
     public int MaxInFlightRequestsPerConnection { get; set; } = 5;
 
     /// <summary>
-    /// Gets or sets a value indicating whether the idempotent producer is enabled, which
-    /// guarantees exactly-once delivery to a partition and preserves per-key ordering across
-    /// retries. Requires <see cref="Acks.All"/> and at most 5 in-flight requests.
+    /// Exactly-once delivery to a partition, preserving per-key ordering across retries.
+    /// Requires <see cref="Acks.All"/> and at most 5 in-flight requests.
     /// </summary>
     public bool EnableIdempotence { get; set; } = true;
 
@@ -64,19 +50,14 @@ public sealed class KafkaOptions : IValidatableObject
     [Range(1, 300_000)]
     public int RetryBackoffMs { get; set; } = 500;
 
-    /// <summary>
-    /// Gets or sets the total time, in milliseconds, a message may spend being produced
-    /// (including retries) before it is failed.
-    /// </summary>
+    /// <summary>Total time a message may spend being produced, retries included.</summary>
     [Range(1, 900_000)]
     public int MessageTimeoutMs { get; set; } = 30_000;
 
     /// <summary>
-    /// Validates combinations that librdkafka rejects at producer construction time, so that
-    /// misconfiguration surfaces as a clear startup failure rather than an opaque broker error.
+    /// Rejects the combinations librdkafka refuses at construction, so misconfiguration fails
+    /// at startup with a clear message rather than an opaque broker error.
     /// </summary>
-    /// <param name="validationContext">The validation context (unused).</param>
-    /// <returns>One <see cref="ValidationResult"/> per invalid combination.</returns>
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {
         if (!this.EnableIdempotence)
