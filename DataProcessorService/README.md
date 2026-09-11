@@ -257,6 +257,14 @@ cd DataProcessorService
 dotnet test
 ```
 
+Integration tests run against real PostgreSQL and Kafka through Testcontainers and are tagged
+`[Trait("Category", "Integration")]`; Docker must be running. Filter them out with
+`--filter-not-trait "Category=Integration"` when it is not.
+
+One of them runs the database session in `America/New_York` on purpose. `date_trunc` truncates in
+the session time zone, so that test is the only thing standing between a server on local time and
+silently wrong period boundaries.
+
 ## CI/CD
 
 [`.github/workflows/data-processor.yaml`](../.github/workflows/data-processor.yaml) triggers on
