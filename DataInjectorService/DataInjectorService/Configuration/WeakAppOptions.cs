@@ -25,7 +25,7 @@ public sealed class WeakAppOptions
 
     /// <summary>Gets or sets the polling interval in seconds between successive /meters calls.</summary>
     [Range(1, 86_400)]
-    public int PollingIntervalSeconds { get; set; } = 30;
+    public int PollingIntervalSeconds { get; set; } = 60;
 
     /// <summary>Gets or sets the HTTP request timeout in seconds.</summary>
     [Range(1, 600)]

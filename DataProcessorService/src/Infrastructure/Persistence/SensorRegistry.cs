@@ -99,9 +99,12 @@ public sealed class SensorRegistry(IServiceScopeFactory scopeFactory) : ISensorR
         CancellationToken cancellationToken
     )
     {
+        // Ordered because the unique index makes at most one row match, but EF cannot know that
+        // and warns about a row-limiting operator without a deterministic order.
         var ids = await context
             .Sensors.AsNoTracking()
             .Where(sensor => sensor.Name == name && sensor.Type == type)
+            .OrderBy(sensor => sensor.Id)
             .Select(sensor => sensor.Id)
             .Take(1)
             .ToListAsync(cancellationToken);

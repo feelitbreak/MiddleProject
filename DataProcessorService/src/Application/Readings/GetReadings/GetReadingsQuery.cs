@@ -6,27 +6,27 @@ using DataProcessorService.Application.Contracts;
 using DataProcessorService.Domain.Common;
 using DataProcessorService.Domain.Enums;
 
-/// <summary>Lists readings newest-first, filtered and paged by cursor.</summary>
+/// <summary>Lists readings newest-first, filtered and paged.</summary>
 /// <param name="location">Restrict to one location, or null for every location.</param>
 /// <param name="sensorType">Restrict to one sensor type, or null for every type.</param>
 /// <param name="from">Inclusive lower bound on collection time.</param>
 /// <param name="to">Exclusive upper bound on collection time.</param>
-/// <param name="limit">Maximum readings to return.</param>
-/// <param name="cursor">Opaque position to resume from, from a previous response.</param>
+/// <param name="page">One-based page number.</param>
+/// <param name="pageSize">How many readings per page.</param>
 public sealed class GetReadingsQuery(
     string? location,
     SensorType? sensorType,
     DateTimeOffset? from,
     DateTimeOffset? to,
-    int limit,
-    string? cursor
-) : IQuery<CursorPage<ReadingDto>>
+    int page,
+    int pageSize
+) : IQuery<PagedResult<ReadingDto>>
 {
     /// <summary>The largest page a caller may request.</summary>
-    public const int MaxLimit = 500;
+    public const int MaxPageSize = 500;
 
     /// <summary>The page size used when a caller does not specify one.</summary>
-    public const int DefaultLimit = 100;
+    public const int DefaultPageSize = 50;
 
     /// <summary>Gets the location filter.</summary>
     public string? Location { get; } = location;
@@ -40,49 +40,39 @@ public sealed class GetReadingsQuery(
     /// <summary>Gets the exclusive upper bound on collection time.</summary>
     public DateTimeOffset? To { get; } = to;
 
-    /// <summary>Gets the requested page size.</summary>
-    public int Limit { get; } = limit;
+    /// <summary>Gets the one-based page number.</summary>
+    public int Page { get; } = page;
 
-    /// <summary>Gets the opaque cursor to resume from.</summary>
-    public string? Cursor { get; } = cursor;
+    /// <summary>Gets the page size.</summary>
+    public int PageSize { get; } = pageSize;
 }
 
-/// <summary>Validates the request, resolves the cursor, and shapes the page.</summary>
+/// <summary>Validates the request and returns the requested page.</summary>
 /// <param name="queries">Read-side access to stored readings.</param>
 public sealed class GetReadingsQueryHandler(IReadingQueries queries)
-    : IQueryHandler<GetReadingsQuery, CursorPage<ReadingDto>>
+    : IQueryHandler<GetReadingsQuery, PagedResult<ReadingDto>>
 {
     /// <inheritdoc/>
-    public async Task<Result<CursorPage<ReadingDto>>> HandleAsync(
+    public async Task<Result<PagedResult<ReadingDto>>> HandleAsync(
         GetReadingsQuery query,
         CancellationToken cancellationToken
     )
     {
         ArgumentNullException.ThrowIfNull(query);
 
-        if (query.Limit is < 1 or > GetReadingsQuery.MaxLimit)
+        if (query.Page < 1)
         {
-            return Result.Failure<CursorPage<ReadingDto>>(
-                Error.CreateValidation(
-                    $"limit must be between 1 and {GetReadingsQuery.MaxLimit}."
-                )
-            );
+            return Failure("page must be 1 or greater.");
+        }
+
+        if (query.PageSize is < 1 or > GetReadingsQuery.MaxPageSize)
+        {
+            return Failure($"pageSize must be between 1 and {GetReadingsQuery.MaxPageSize}.");
         }
 
         if (query.From is not null && query.To is not null && query.From >= query.To)
         {
-            return Result.Failure<CursorPage<ReadingDto>>(
-                Error.CreateValidation("from must be earlier than to.")
-            );
-        }
-
-        ReadingCursor? cursor = null;
-
-        if (query.Cursor is not null && !ReadingCursor.TryDecode(query.Cursor, out cursor))
-        {
-            return Result.Failure<CursorPage<ReadingDto>>(
-                Error.CreateValidation("cursor is not a valid pagination token.")
-            );
+            return Failure("from must be earlier than to.");
         }
 
         var filter = new ReadingFilter(
@@ -92,20 +82,22 @@ public sealed class GetReadingsQueryHandler(IReadingQueries queries)
             Normalize(query.To)
         );
 
-        // One row beyond the page is fetched so that "is there more" costs nothing extra; a
-        // COUNT(*) over the same filter would double the work for a question the extra row
-        // already answers.
-        var readings = await queries.ListAsync(filter, query.Limit, cursor, cancellationToken);
+        var totalCount = await queries.CountAsync(filter, cancellationToken);
 
-        var hasMore = readings.Count > query.Limit;
-        var items = hasMore ? readings.Take(query.Limit).ToList() : readings;
+        var readings = await queries.ListAsync(
+            filter,
+            (query.Page - 1) * query.PageSize,
+            query.PageSize,
+            cancellationToken
+        );
 
-        var nextCursor = hasMore
-            ? new ReadingCursor(items[^1].CollectedAt, items[^1].Id).Encode()
-            : null;
-
-        return Result.Success(new CursorPage<ReadingDto>(items, nextCursor));
+        return Result.Success(
+            new PagedResult<ReadingDto>(readings, query.Page, query.PageSize, totalCount)
+        );
     }
+
+    private static Result<PagedResult<ReadingDto>> Failure(string description) =>
+        Result.Failure<PagedResult<ReadingDto>>(Error.CreateValidation(description));
 
     private static DateTimeOffset? Normalize(DateTimeOffset? value) =>
         value is null ? null : UtcInstant.Normalize(value.Value);

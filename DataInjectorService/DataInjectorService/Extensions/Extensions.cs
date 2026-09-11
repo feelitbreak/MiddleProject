@@ -19,6 +19,10 @@ public static class Extensions
     /// <param name="services">The service collection.</param>
     public static void AddSwaggerGenConfiguration(this IServiceCollection services)
     {
+        // Minimal API endpoints (the health probes) are not surfaced to Swagger without this;
+        // controllers bring their own API explorer, minimal APIs do not.
+        services.AddEndpointsApiExplorer();
+
         services.AddSwaggerGen(options =>
         {
             options.SwaggerDoc("v1", new() { Title = "DataInjectorService", Version = "v1" });

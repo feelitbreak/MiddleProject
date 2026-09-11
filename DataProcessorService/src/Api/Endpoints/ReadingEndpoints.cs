@@ -6,22 +6,14 @@ using DataProcessorService.Application.Readings.GetLatestReadings;
 using DataProcessorService.Application.Readings.GetReadingAggregates;
 using DataProcessorService.Application.Readings.GetReadings;
 using DataProcessorService.Application.Sensors.GetSensors;
-using DataProcessorService.Domain.Common;
 using DataProcessorService.Domain.Enums;
 using System.Diagnostics.CodeAnalysis;
 
 /// <summary>
-/// The read side of the service, exposed as minimal API endpoints that bind query parameters,
-/// dispatch a query, and translate the result.
-/// <para>
-/// Enum-valued parameters are bound as strings and converted through
-/// <see cref="EnumVocabulary{TEnum}"/> rather than being typed as enums directly. Minimal API
-/// parameter binding does not consult the JSON serializer, so a declared enum parameter would
-/// require the C# member name (<c>AirQuality</c>) while responses emit the canonical spelling
-/// (<c>air_quality</c>) --- two vocabularies in one API. Converting here also turns an unrecognised
-/// value into a problem response that lists what was expected, instead of an unhandled binding
-/// exception.
-/// </para>
+/// The read side of the service: informational endpoints for developers and operators, not a
+/// consumer-facing API. The dashboard reads through the GraphQL gateway, which queries the database
+/// directly, so these are deliberately plain --- ordinary page numbers, sensible defaults, and
+/// enums bound the way ASP.NET Core binds them out of the box.
 /// </summary>
 [ExcludeFromCodeCoverage]
 public static class ReadingEndpoints
@@ -40,44 +32,34 @@ public static class ReadingEndpoints
                     ISender sender,
                     CancellationToken cancellationToken,
                     string? location = null,
-                    string? sensorType = null,
+                    SensorType? sensorType = null,
                     DateTimeOffset? from = null,
                     DateTimeOffset? to = null,
-                    int limit = GetReadingsQuery.DefaultLimit,
-                    string? cursor = null
+                    int page = 1,
+                    int pageSize = GetReadingsQuery.DefaultPageSize
                 ) =>
-                {
-                    SensorType? parsedType = null;
-
-                    if (sensorType is not null)
-                    {
-                        if (!EnumVocabulary<SensorType>.TryParse(sensorType, out var parsed))
-                        {
-                            return ApiResults.ValidationProblem(
-                                $"sensorType must be one of: {EnumVocabulary<SensorType>.AcceptedValues}."
-                            );
-                        }
-
-                        parsedType = parsed;
-                    }
-
-                    var result = await sender.SendAsync(
-                        new GetReadingsQuery(location, parsedType, from, to, limit, cursor),
-                        cancellationToken
-                    );
-
-                    return result.ToHttpResult();
-                }
+                    (
+                        await sender.SendAsync(
+                            new GetReadingsQuery(
+                                location,
+                                sensorType,
+                                from,
+                                to,
+                                page,
+                                pageSize
+                            ),
+                            cancellationToken
+                        )
+                    ).ToHttpResult()
             )
             .WithName("GetReadings")
-            .WithSummary("Lists readings newest first.")
+            .WithSummary("Lists readings, newest first.")
             .WithDescription(
-                "Paged by opaque cursor rather than page number: readings arrive continuously at "
-                    + "the head of the ordering, so a numbered page would shift between requests. "
-                    + "Pass the nextCursor from a response to fetch the following page. "
-                    + "sensorType accepts air_quality, energy or motion."
+                "Ordered by collection time descending, then by id so that readings sharing a "
+                    + "collection instant page deterministically. The response carries totalCount "
+                    + "and totalPages alongside the items."
             )
-            .Produces<CursorPage<ReadingDto>>()
+            .Produces<PagedResult<ReadingDto>>()
             .ProducesProblem(StatusCodes.Status400BadRequest);
 
         readings
@@ -97,52 +79,31 @@ public static class ReadingEndpoints
                 "/aggregate",
                 async (
                     ISender sender,
-                    string metric,
-                    string bucket,
-                    DateTimeOffset from,
-                    DateTimeOffset to,
+                    ReadingMetric metric,
                     CancellationToken cancellationToken,
+                    AggregationInterval interval = AggregationInterval.Hour,
+                    DateTimeOffset? from = null,
+                    DateTimeOffset? to = null,
                     string? location = null
                 ) =>
-                {
-                    if (!EnumVocabulary<ReadingMetric>.TryParse(metric, out var parsedMetric))
-                    {
-                        return ApiResults.ValidationProblem(
-                            $"metric must be one of: {EnumVocabulary<ReadingMetric>.AcceptedValues}."
-                        );
-                    }
-
-                    if (!EnumVocabulary<BucketSize>.TryParse(bucket, out var parsedBucket))
-                    {
-                        return ApiResults.ValidationProblem(
-                            $"bucket must be one of: {EnumVocabulary<BucketSize>.AcceptedValues}."
-                        );
-                    }
-
-                    var result = await sender.SendAsync(
-                        new GetReadingAggregatesQuery(
-                            parsedMetric,
-                            parsedBucket,
-                            from,
-                            to,
-                            location
-                        ),
-                        cancellationToken
-                    );
-
-                    return result.ToHttpResult();
-                }
+                    (
+                        await sender.SendAsync(
+                            new GetReadingAggregatesQuery(metric, interval, from, to, location),
+                            cancellationToken
+                        )
+                    ).ToHttpResult()
             )
             .WithName("GetReadingAggregates")
-            .WithSummary("Aggregates one metric into time buckets, grouped by location.")
+            .WithSummary("Aggregates one metric into time periods, grouped by location.")
             .WithDescription(
-                "metric accepts co2, pm25, humidity, motion_detected or energy_kwh; bucket accepts "
-                    + "hour, day, week or month. Buckets are aligned to UTC. The time range is "
-                    + "mandatory and capped, both in span and in the number of buckets it may "
-                    + "produce, so that a single request cannot ask for an unbounded scan. "
-                    + "For motion_detected the average is the fraction of readings with motion."
+                "Each row covers one interval at one location, reporting count, average, minimum "
+                    + "and maximum. Periods are aligned to UTC boundaries, so an hourly period "
+                    + "starts exactly on the hour. Only metric is required: interval defaults to "
+                    + "Hour and the range defaults to a window suited to the interval, ending now. "
+                    + "For MotionDetected the average is the fraction of readings with motion. "
+                    + "The range is capped at 90 days and 2000 periods."
             )
-            .Produces<IReadOnlyList<AggregateBucketDto>>()
+            .Produces<IReadOnlyList<AggregatePeriodDto>>()
             .ProducesProblem(StatusCodes.Status400BadRequest);
 
         app.MapGet(

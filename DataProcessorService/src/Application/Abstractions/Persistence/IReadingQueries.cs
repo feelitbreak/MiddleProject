@@ -30,13 +30,13 @@ public sealed class ReadingFilter(
 
 /// <summary>Parameters for a bucketed aggregation.</summary>
 /// <param name="metric">The numeric series to aggregate.</param>
-/// <param name="bucket">How far apart buckets are spaced.</param>
+/// <param name="interval">How long each period covers.</param>
 /// <param name="from">Inclusive lower bound on collection time.</param>
 /// <param name="to">Exclusive upper bound on collection time.</param>
 /// <param name="location">Restrict to one location, or null for every location.</param>
 public sealed class AggregateFilter(
     ReadingMetric metric,
-    BucketSize bucket,
+    AggregationInterval interval,
     DateTimeOffset from,
     DateTimeOffset to,
     string? location
@@ -45,8 +45,8 @@ public sealed class AggregateFilter(
     /// <summary>Gets the numeric series being aggregated.</summary>
     public ReadingMetric Metric { get; } = metric;
 
-    /// <summary>Gets the bucket spacing.</summary>
-    public BucketSize Bucket { get; } = bucket;
+    /// <summary>Gets how long each period covers.</summary>
+    public AggregationInterval Interval { get; } = interval;
 
     /// <summary>Gets the inclusive lower bound on collection time.</summary>
     public DateTimeOffset From { get; } = from;
@@ -68,19 +68,22 @@ public sealed class AggregateFilter(
 /// </summary>
 public interface IReadingQueries
 {
-    /// <summary>Lists readings newest-first, starting after <paramref name="after"/>.</summary>
+    /// <summary>Counts the readings matching a filter.</summary>
     /// <param name="filter">Filters to apply.</param>
-    /// <param name="limit">Maximum number of readings to return.</param>
-    /// <param name="after">Position to resume from, or null to start at the newest reading.</param>
     /// <param name="cancellationToken">Token used to cancel the operation.</param>
-    /// <returns>
-    /// Up to <paramref name="limit"/> plus one readings. The extra item, when present, tells the
-    /// caller another page exists without a second count query.
-    /// </returns>
+    /// <returns>How many readings match.</returns>
+    Task<int> CountAsync(ReadingFilter filter, CancellationToken cancellationToken);
+
+    /// <summary>Lists one page of readings, newest first.</summary>
+    /// <param name="filter">Filters to apply.</param>
+    /// <param name="skip">How many readings to skip.</param>
+    /// <param name="take">How many readings to return.</param>
+    /// <param name="cancellationToken">Token used to cancel the operation.</param>
+    /// <returns>The readings on the requested page.</returns>
     Task<IReadOnlyList<ReadingDto>> ListAsync(
         ReadingFilter filter,
-        int limit,
-        ReadingCursor? after,
+        int skip,
+        int take,
         CancellationToken cancellationToken
     );
 
@@ -89,11 +92,11 @@ public interface IReadingQueries
     /// <returns>One reading per sensor, ordered by location then sensor type.</returns>
     Task<IReadOnlyList<ReadingDto>> ListLatestPerSensorAsync(CancellationToken cancellationToken);
 
-    /// <summary>Aggregates a metric into time buckets, grouped by location.</summary>
+    /// <summary>Aggregates a metric into time periods, grouped by location.</summary>
     /// <param name="filter">Aggregation parameters.</param>
     /// <param name="cancellationToken">Token used to cancel the operation.</param>
-    /// <returns>The buckets, ordered by time then location.</returns>
-    Task<IReadOnlyList<AggregateBucketDto>> AggregateAsync(
+    /// <returns>The periods, ordered by time then location.</returns>
+    Task<IReadOnlyList<AggregatePeriodDto>> AggregateAsync(
         AggregateFilter filter,
         CancellationToken cancellationToken
     );

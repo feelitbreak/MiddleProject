@@ -20,35 +20,32 @@ public sealed class ReadingQueries(MeterReadingsDbContext context) : IReadingQue
     private const string BucketTimeZone = "UTC";
 
     /// <inheritdoc/>
+    public Task<int> CountAsync(ReadingFilter filter, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(filter);
+
+        return this.Filtered(filter).CountAsync(cancellationToken);
+    }
+
+    /// <inheritdoc/>
     public async Task<IReadOnlyList<ReadingDto>> ListAsync(
         ReadingFilter filter,
-        int limit,
-        ReadingCursor? after,
+        int skip,
+        int take,
         CancellationToken cancellationToken
     )
     {
         ArgumentNullException.ThrowIfNull(filter);
 
-        var query = Filtered(filter);
-
-        if (after is not null)
-        {
-            // Written as an explicit disjunction rather than a row-value comparison, which EF
-            // cannot translate. The identifier breaks ties within one collection instant, which a
-            // whole polling batch shares.
-            query = query.Where(reading =>
-                reading.CollectedAt < after.CollectedAt
-                || (reading.CollectedAt == after.CollectedAt && reading.Id < after.Id)
-            );
-        }
-
         return await Project(
-                query
+                this.Filtered(filter)
+                    // The identifier breaks ties: collection timestamps are stamped per poll, so a
+                    // whole batch of readings shares one instant and ordering by time alone would
+                    // leave a page boundary free to fall anywhere inside such a group.
                     .OrderByDescending(reading => reading.CollectedAt)
                     .ThenByDescending(reading => reading.Id)
-                    // One row beyond the page, so the caller can tell whether more exist without
-                    // a second count query.
-                    .Take(limit + 1)
+                    .Skip(skip)
+                    .Take(take)
             )
             .ToListAsync(cancellationToken);
     }
@@ -62,7 +59,8 @@ public sealed class ReadingQueries(MeterReadingsDbContext context) : IReadingQue
         // catalogue is small and the unique index on (sensor_id, collected_at) makes each lookup a
         // short backward scan, so this stays cheaper than window functions EF cannot translate.
         var latest = context
-            .Sensors.Select(sensor =>
+            .Sensors.AsNoTracking()
+            .Select(sensor =>
                 sensor
                     .Readings.OrderByDescending(reading => reading.CollectedAt)
                     .ThenByDescending(reading => reading.Id)
@@ -82,7 +80,7 @@ public sealed class ReadingQueries(MeterReadingsDbContext context) : IReadingQue
     }
 
     /// <inheritdoc/>
-    public async Task<IReadOnlyList<AggregateBucketDto>> AggregateAsync(
+    public async Task<IReadOnlyList<AggregatePeriodDto>> AggregateAsync(
         AggregateFilter filter,
         CancellationToken cancellationToken
     )
@@ -97,45 +95,49 @@ public sealed class ReadingQueries(MeterReadingsDbContext context) : IReadingQue
             samples = samples.Where(sample => sample.Location == filter.Location);
         }
 
-        var unit = UnitOf(filter.Bucket);
+        var unit = UnitOf(filter.Interval);
 
-        var buckets = await samples
+        var periods = await samples
             .GroupBy(sample => new
             {
-                Bucket = PostgresFunctions.DateTrunc(unit, sample.CollectedAt, BucketTimeZone),
+                PeriodStart = PostgresFunctions.DateTrunc(
+                    unit,
+                    sample.CollectedAt,
+                    BucketTimeZone
+                ),
                 sample.Location,
             })
-            .Select(group => new AggregateBucketDto
+            .Select(group => new AggregatePeriodDto
             {
-                Bucket = group.Key.Bucket,
+                PeriodStart = group.Key.PeriodStart,
                 Location = group.Key.Location,
                 Count = group.Count(),
                 Average = group.Average(sample => sample.Value),
                 Minimum = group.Min(sample => sample.Value),
                 Maximum = group.Max(sample => sample.Value),
             })
-            .OrderBy(bucket => bucket.Bucket)
-            .ThenBy(bucket => bucket.Location)
+            .OrderBy(period => period.PeriodStart)
+            .ThenBy(period => period.Location)
             .ToListAsync(cancellationToken);
 
-        return buckets;
+        return periods;
     }
 
     /// <summary>
-    /// Maps a bucket size to its <c>date_trunc</c> unit. The result is bound as a parameter, never
+    /// Maps an interval to its <c>date_trunc</c> unit. The result is bound as a parameter, never
     /// concatenated into the statement.
     /// </summary>
-    private static string UnitOf(BucketSize bucket) =>
-        bucket switch
+    private static string UnitOf(AggregationInterval interval) =>
+        interval switch
         {
-            BucketSize.Hour => "hour",
-            BucketSize.Day => "day",
-            BucketSize.Week => "week",
-            BucketSize.Month => "month",
+            AggregationInterval.Hour => "hour",
+            AggregationInterval.Day => "day",
+            AggregationInterval.Week => "week",
+            AggregationInterval.Month => "month",
             _ => throw new ArgumentOutOfRangeException(
-                nameof(bucket),
-                bucket,
-                "Unknown bucket size."
+                nameof(interval),
+                interval,
+                "Unknown aggregation interval."
             ),
         };
 

@@ -41,7 +41,7 @@ Settings are bound from `appsettings.json` / environment variables (`__` separat
 |---|---|---|
 | `BaseUrl` | Base URL of the WeakApp instance | *(required)* |
 | `ApiKey` | Sent as the `X-Api-Key` request header | *(required)* |
-| `PollingIntervalSeconds` | Delay between successive `/meters` polls | `30` |
+| `PollingIntervalSeconds` | Delay between successive `/meters` polls | `60` |
 | `TimeoutSeconds` | Per-attempt HTTP timeout | `10` |
 | `RetryCount` | Retry attempts for transient failures | `3` |
 | `RetryBaseDelaySeconds` | Base delay before the first retry (exponential back-off + jitter) | `2` |
@@ -86,12 +86,17 @@ In `docker-compose.yml` (repo root) this service runs as `data_injector`, pointe
 | Endpoint | Purpose |
 |---|---|
 | `GET /health/live` | Liveness — always healthy once the process is up |
-| `GET /health/ready` | Readiness — degraded/unhealthy if WeakApp is unreachable (`WeakAppHealthCheck`) |
+| `GET /health/ready` | Readiness — degraded if WeakApp is unreachable (`WeakAppHealthCheck`) |
 | `GET /metrics` | Prometheus scraping endpoint |
 | `GET /swagger` | Swagger UI (Development environment only) |
 
 No inbound business API is exposed — this service is a one-way pipe from WeakApp to Kafka; it does
-not currently expose controller endpoints beyond health/metrics/Swagger infrastructure.
+not expose endpoints beyond health, metrics and Swagger.
+
+The probes are mapped as ordinary handlers over `HealthCheckService` rather than with
+`MapHealthChecks`: that extension writes a bare status string and registers a raw request delegate
+with no method to describe, so its endpoints never reach the API explorer and never appear in
+Swagger. Going through the service directly documents them and returns which check failed.
 
 ## Observability
 

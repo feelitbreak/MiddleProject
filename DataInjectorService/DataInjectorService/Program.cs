@@ -1,7 +1,7 @@
 namespace DataInjectorService;
 
+using DataInjectorService.Endpoints;
 using DataInjectorService.Extensions;
-using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Serilog;
 using System.Diagnostics.CodeAnalysis;
 
@@ -64,30 +64,7 @@ public static class Program
             // Local/dev only: not restricted to internal networks here.
             app.MapPrometheusScrapingEndpoint();
 
-            // Liveness: the service process is up.
-            app.MapHealthChecks(
-                "/health/live",
-                new()
-                {
-                    Predicate = _ => false,
-                    ResultStatusCodes = { [HealthStatus.Healthy] = StatusCodes.Status200OK },
-                }
-            );
-
-            // Readiness: liveness + WeakApp reachability.
-            app.MapHealthChecks(
-                "/health/ready",
-                new()
-                {
-                    Predicate = check => check.Tags.Contains("ready"),
-                    ResultStatusCodes =
-                    {
-                        [HealthStatus.Healthy] = StatusCodes.Status200OK,
-                        [HealthStatus.Degraded] = StatusCodes.Status200OK,
-                        [HealthStatus.Unhealthy] = StatusCodes.Status503ServiceUnavailable,
-                    },
-                }
-            );
+            app.MapHealthEndpoints();
 
             await app.RunAsync();
         }

@@ -2,7 +2,6 @@ namespace DataProcessorService.Api;
 
 using DataProcessorService.Api.Endpoints;
 using DataProcessorService.Api.Extensions;
-using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Hosting;
 using Serilog;
 using System.Diagnostics.CodeAnalysis;
@@ -64,24 +63,7 @@ public static class Program
             app.MapReadingEndpoints();
             app.MapPrometheusScrapingEndpoint();
 
-            app.MapHealthChecks(
-                "/health/live",
-                new() { Predicate = check => check.Tags.Contains("live") }
-            );
-
-            app.MapHealthChecks(
-                "/health/ready",
-                new()
-                {
-                    Predicate = check => check.Tags.Contains("ready"),
-                    ResultStatusCodes =
-                    {
-                        [HealthStatus.Healthy] = StatusCodes.Status200OK,
-                        [HealthStatus.Degraded] = StatusCodes.Status200OK,
-                        [HealthStatus.Unhealthy] = StatusCodes.Status503ServiceUnavailable,
-                    },
-                }
-            );
+            app.MapHealthEndpoints();
 
             await app.RunAsync();
         }

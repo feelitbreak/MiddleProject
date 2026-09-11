@@ -17,6 +17,8 @@ using DataProcessorService.Infrastructure.Persistence.Queries;
 using DataProcessorService.Infrastructure.Persistence.Repositories;
 using DataProcessorService.Infrastructure.Telemetry;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Options;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using System.Diagnostics.CodeAnalysis;
@@ -33,18 +35,19 @@ using System.Text.Json.Serialization;
 public static class Extensions
 {
     /// <summary>
-    /// Configures JSON for the read API: sensor types are written using the same vocabulary as the
-    /// wire contract and the database, and columns that do not apply to a reading's type are
-    /// omitted rather than serialised as nulls.
+    /// Configures JSON for the read API: enums are written as their names, matching what query
+    /// parameter binding accepts, and columns that do not apply to a reading's type are omitted
+    /// rather than serialised as nulls.
     /// </summary>
     /// <param name="services">The service collection.</param>
     public static void AddJsonConfiguration(this IServiceCollection services)
     {
         services.ConfigureHttpJsonOptions(options =>
         {
-            options.SerializerOptions.Converters.Add(
-                new JsonStringEnumConverter(JsonNamingPolicy.SnakeCaseLower)
-            );
+            // Default member names, not snake_case: minimal API parameter binding uses
+            // Enum.TryParse and does not consult this serializer, so writing a different spelling
+            // here would make the API accept one vocabulary and emit another.
+            options.SerializerOptions.Converters.Add(new JsonStringEnumConverter());
             options.SerializerOptions.DefaultIgnoreCondition =
                 JsonIgnoreCondition.WhenWritingNull;
         });
@@ -197,6 +200,8 @@ public static class Extensions
     /// <param name="services">The service collection.</param>
     public static void AddCqrsHandlers(this IServiceCollection services)
     {
+        services.TryAddSingleton(TimeProvider.System);
+
         services.AddCqrs(cqrs =>
             cqrs
                 // Outermost first. Logging wraps everything so that a rollback is still reported;
@@ -210,7 +215,7 @@ public static class Extensions
                 >()
                 .AddQueryHandler<
                     GetReadingsQuery,
-                    CursorPage<ReadingDto>,
+                    PagedResult<ReadingDto>,
                     GetReadingsQueryHandler
                 >()
                 .AddQueryHandler<
@@ -220,7 +225,7 @@ public static class Extensions
                 >()
                 .AddQueryHandler<
                     GetReadingAggregatesQuery,
-                    IReadOnlyList<AggregateBucketDto>,
+                    IReadOnlyList<AggregatePeriodDto>,
                     GetReadingAggregatesQueryHandler
                 >()
                 .AddQueryHandler<GetSensorsQuery, IReadOnlyList<SensorDto>, GetSensorsQueryHandler>()
@@ -281,7 +286,7 @@ public static class Extensions
     public static async Task ApplyMigrationsIfConfiguredAsync(this WebApplication app)
     {
         var options = app.Services.GetRequiredService<
-            Microsoft.Extensions.Options.IOptions<DatabaseOptions>
+            IOptions<DatabaseOptions>
         >();
 
         if (!options.Value.ApplyMigrationsOnStartup)

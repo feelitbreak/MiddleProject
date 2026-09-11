@@ -121,9 +121,9 @@ In `docker-compose.yml` (repo root) this service runs as `data_processor`, point
 
 | Endpoint | Purpose |
 |---|---|
-| `GET /api/readings` | Readings newest first, filtered and cursor-paged |
+| `GET /api/readings` | Readings newest first, filtered and paged |
 | `GET /api/readings/latest` | The most recent reading for every sensor |
-| `GET /api/readings/aggregate` | One metric bucketed by time and grouped by location |
+| `GET /api/readings/aggregate` | One metric aggregated into time periods, grouped by location |
 | `GET /api/sensors` | The sensor catalogue |
 | `GET /health/live` | Liveness — unhealthy if the consumer loop has stalled |
 | `GET /health/ready` | Readiness — database reachable and partitions assigned |
@@ -134,51 +134,83 @@ The liveness probe reports on the consumer loop's last iteration rather than mer
 being up: a wedged or evicted consumer leaves the web host answering requests normally while
 ingesting nothing.
 
+Both probes are mapped as ordinary handlers over `HealthCheckService` rather than with
+`MapHealthChecks`. That extension writes a bare status string and registers a raw request delegate
+with no method to describe, so its endpoints never reach the API explorer and never appear in
+Swagger. Going through the service directly documents them alongside everything else and returns
+which check failed instead of one word.
+
 ### Query API
 
-One vocabulary throughout: `air_quality`, `motion`, `energy` appear in Kafka messages, in the
-database, in JSON responses, and in query strings. That last one needs saying because minimal API
-parameter binding does **not** consult the JSON serializer — a parameter declared as an enum would
-demand the C# member name (`AirQuality`) while responses emit `air_quality`. Enum-valued parameters
-are therefore bound as strings and converted through `EnumVocabulary<T>`, which also turns an
-unrecognised value into a problem response listing what was expected.
+These endpoints are **informational, for developers and operators**. The dashboard does not use
+them — it reads through the GraphQL gateway, which queries the database directly. They are
+therefore deliberately plain: ordinary page numbers, sensible defaults, and enums bound the way
+ASP.NET Core binds them out of the box, so every call is easy to type by hand or from Swagger.
 
 `ReadingDto` is flat rather than polymorphic: columns that do not apply to a reading's sensor type
-are null and omitted from the response, so an energy reading serialises as
-`{"id":…,"sensorName":"Kitchen","sensorType":"energy","collectedAt":…,"energyKwh":12.5}`. A uniform
-shape suits charting and tabulation, and keeps the OpenAPI schema to one type.
+are null and omitted from the response, so an energy reading comes back as
+`{"id":…,"sensorName":"Kitchen","sensorType":"Energy","collectedAt":…,"energyKwh":12.5}`.
 
-**Pagination is by cursor, not page number.** Readings arrive continuously at the head of the
-`collected_at DESC` ordering, so a numbered page would both re-scan everything before it and shift
-under the reader between requests. The cursor encodes `(collected_at, id)` — the identifier is part
-of the key because a whole polling batch shares one collection instant, and ordering by timestamp
-alone would let a page boundary fall inside such a group and skip or repeat rows. One row beyond
-the page is fetched so `hasMore` costs nothing. The trade-off is that there is no "page 5 of 20",
-only "next"; the same shape maps directly onto the connection model a GraphQL gateway will want.
+Note the API spells enums as their .NET names (`AirQuality`, `EnergyKwh`) while the database and
+Kafka use `air_quality` and `energy`. That is not an oversight. Minimal API parameter binding uses
+`Enum.TryParse` and never consults the JSON serializer, so making responses snake_case would leave
+the API accepting one spelling and emitting another. The storage spelling is a separate concern,
+handled in one place by `SensorTypeNames`.
 
-**Aggregation stays in LINQ.** The Npgsql provider does not expose `date_trunc` as a `DbFunction`,
-so it is mapped with `HasDbFunction` in `MeterReadingsDbContext`. That keeps grouping composable
-*and* means the unit and time zone arrive as bound parameters:
+#### Pagination
+
+`?page=1&pageSize=50`, with `totalCount` and `totalPages` in the response. Ordering is by
+collection time descending, then by id — the tiebreak matters because the injector stamps one
+collection instant across a whole poll, so ordering by time alone would let rows shuffle between
+requests and a page boundary land anywhere inside a group.
+
+#### Aggregation — what a "period" is
+
+`GET /api/readings/aggregate?metric=EnergyKwh` groups readings into fixed time windows and reports
+statistics for each one. Only `metric` is required.
+
+Each response row is **one interval at one location**:
+
+```json
+{ "periodStart": "2026-09-11T12:00:00+00:00", "location": "Kitchen",
+  "count": 97, "average": 354.2, "minimum": 10.9, "maximum": 982.2 }
+```
+
+That row means: *between 12:00 and 13:00 UTC, the Kitchen energy meter reported 97 readings
+averaging 354.2 kWh.* `periodStart` is the **start** of the window; the window ends where the next
+one begins. Periods are aligned to real UTC boundaries — an hourly period starts exactly on the
+hour, not an hour before whenever you happened to call.
+
+| Parameter | Meaning | Default |
+|---|---|---|
+| `metric` | Which number to aggregate: `Co2`, `Pm25`, `Humidity`, `MotionDetected`, `EnergyKwh` | *(required)* |
+| `interval` | Window length: `Hour`, `Day`, `Week`, `Month` | `Hour` |
+| `from` / `to` | Time bounds | A window suited to the interval, ending now |
+| `location` | One location, or every location | every location |
+
+The metric also selects the sensor type, which is why one endpoint serves all three reading kinds.
+`MotionDetected` maps true and false to 1 and 0, so its average is the fraction of readings in
+which motion was seen.
+
+The alignment comes from PostgreSQL's `date_trunc`. Npgsql does not expose it as a `DbFunction`, so
+it is mapped with `HasDbFunction` in `MeterReadingsDbContext`, which keeps the grouping in LINQ
+*and* passes the unit and time zone as bound parameters:
 
 ```sql
 SELECT date_trunc(@unit, m.collected_at, @zone) AS "Key", avg(...) FROM meter_readings AS m ...
 ```
 
 The time zone argument is not optional — `date_trunc` on a `timestamptz` truncates in the *session*
-time zone, so omitting it would make every daily bucket depend on server configuration.
+time zone, so omitting it would make every daily period depend on server configuration.
 
-Every aggregation is bounded: `from` and `to` are mandatory, the range may not exceed 90 days, and
-the result may not exceed 2000 buckets per location. The two limits guard different things — the
-range bounds how much is scanned, the bucket count bounds how much comes back — and the bucket cap
-sits deliberately below the 2160 that 90 days at hourly spacing would produce, so that it actually
-constrains rather than sitting unreachable behind the range cap.
-
-Aggregating `motion_detected` maps true and false to 1 and 0, so a bucket's average is the fraction
-of readings in which motion was seen.
+The range is always bounded, supplied or defaulted: at most 90 days, and at most 2000 periods per
+location. The two limits guard different things — the range bounds how much is scanned, the period
+count bounds how much comes back — and the period cap sits below the 2160 that 90 days at hourly
+spacing would produce, so it actually constrains rather than sitting unreachable behind the range
+cap.
 
 Validation lives in the query handlers and returns `Error.CreateValidation`, which `ApiResults`
-maps to a 400 problem response. A dedicated validation pipeline behaviour would add indirection
-without removing duplication across four queries.
+maps to a 400 problem response naming what was wrong.
 
 ## Observability
 
