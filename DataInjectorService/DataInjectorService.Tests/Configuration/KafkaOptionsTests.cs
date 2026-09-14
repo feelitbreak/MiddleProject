@@ -79,7 +79,7 @@ public sealed class KafkaOptionsTests
     private static KafkaOptions Valid() =>
         new() { BootstrapServers = "localhost:9092", MeterReadingsTopic = "meter-readings" };
 
-    private static IReadOnlyList<ValidationResult> Validate(KafkaOptions options)
+    private static List<ValidationResult> Validate(KafkaOptions options)
     {
         var results = new List<ValidationResult>();
 

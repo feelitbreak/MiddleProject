@@ -78,7 +78,7 @@ public sealed class MeterReadingColumnContractTests
         );
     }
 
-    private static IReadOnlyList<string> MappedColumnNames()
+    private static List<string> MappedColumnNames()
     {
         using var context = BuildContext();
         var entityType = context.Model.FindEntityType(typeof(MeterReading));
@@ -87,13 +87,12 @@ public sealed class MeterReadingColumnContractTests
 
         // Derived types carry the subtype-specific columns, so the hierarchy has to be walked to
         // see every column the shared table actually has.
-        return entityType
+        return [.. entityType
             .GetDerivedTypesInclusive()
             .SelectMany(type => type.GetProperties())
             .Select(property => ColumnNameOf(property, entityType))
             .Concat([MeterReadingColumns.SensorType])
-            .Distinct(StringComparer.Ordinal)
-            .ToList();
+            .Distinct(StringComparer.Ordinal)];
     }
 
     private static string ColumnNameOf(IProperty property, IEntityType entityType) =>

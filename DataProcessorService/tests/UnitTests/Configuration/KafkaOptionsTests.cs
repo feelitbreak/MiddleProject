@@ -84,7 +84,7 @@ public sealed class KafkaOptionsTests
             ConsumerGroupId = "data-processor",
         };
 
-    private static IReadOnlyList<ValidationResult> Validate(KafkaOptions options)
+    private static List<ValidationResult> Validate(KafkaOptions options)
     {
         var results = new List<ValidationResult>();
 
