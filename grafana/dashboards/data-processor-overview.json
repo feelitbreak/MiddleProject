@@ -1,0 +1,164 @@
+{
+  "uid": "data-processor-overview",
+  "title": "Data Processor Service - Overview",
+  "tags": ["data-processor", "kafka", "postgres"],
+  "timezone": "utc",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "15s",
+  "time": { "from": "now-1h", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "End-to-end lag (p95)",
+      "description": "Seconds between a reading being collected upstream and being persisted here. The single most useful health signal for the pipeline.",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "fieldConfig": {
+        "defaults": { "unit": "s", "custom": { "fillOpacity": 10 } },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "histogram_quantile(0.95, sum(rate(data_processor_kafka_consumer_lag_seconds_bucket[5m])) by (le))",
+          "legendFormat": "p95 lag"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "Messages consumed vs readings inserted",
+      "description": "A persistent gap between the two is duplicates being skipped, which is expected after a redelivery.",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "fieldConfig": {
+        "defaults": { "unit": "reqps", "custom": { "fillOpacity": 10 } },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(data_processor_kafka_messages_consumed_total[5m]))",
+          "legendFormat": "consumed/s"
+        },
+        {
+          "refId": "B",
+          "expr": "sum(rate(data_processor_database_readings_inserted_total[5m]))",
+          "legendFormat": "inserted/s"
+        },
+        {
+          "refId": "C",
+          "expr": "sum(rate(data_processor_database_readings_duplicates_skipped_total[5m]))",
+          "legendFormat": "duplicates skipped/s"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "timeseries",
+      "title": "Batch duration (p95)",
+      "description": "Decode, persist and offset-commit for one batch.",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "fieldConfig": {
+        "defaults": { "unit": "s", "custom": { "fillOpacity": 10 } },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "histogram_quantile(0.95, sum(rate(data_processor_kafka_batch_duration_seconds_bucket[5m])) by (le))",
+          "legendFormat": "p95 batch"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "timeseries",
+      "title": "Database write duration (p95)",
+      "description": "The idempotent ingestion statement for one batch.",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "fieldConfig": {
+        "defaults": { "unit": "s", "custom": { "fillOpacity": 10 } },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "histogram_quantile(0.95, sum(rate(data_processor_database_write_duration_seconds_bucket[5m])) by (le))",
+          "legendFormat": "p95 write"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Dead-lettered messages by reason",
+      "description": "Any sustained non-zero value here needs investigating: these messages are not in the database.",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 },
+      "fieldConfig": {
+        "defaults": { "unit": "short", "custom": { "fillOpacity": 10 } },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(data_processor_kafka_dead_lettered_messages_total[5m])) by (reason)",
+          "legendFormat": "{{reason}}"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "Batch retries",
+      "description": "Transient persistence failures being retried. A rising trend precedes dead-lettering.",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 16 },
+      "fieldConfig": {
+        "defaults": { "unit": "short", "custom": { "fillOpacity": 10 } },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(data_processor_kafka_batch_retries_total[5m]))",
+          "legendFormat": "retries/s"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "Batches processed",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 24 },
+      "fieldConfig": {
+        "defaults": { "unit": "short", "custom": { "fillOpacity": 10 } },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(data_processor_kafka_batches_processed_total[5m]))",
+          "legendFormat": "batches/s"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "type": "timeseries",
+      "title": "GC heap size",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 24 },
+      "fieldConfig": {
+        "defaults": { "unit": "bytes", "custom": { "fillOpacity": 10 } },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(dotnet_gc_last_collection_heap_size_bytes{job=\"data-processor-service\"})",
+          "legendFormat": "heap"
+        }
+      ]
+    }
+  ]
+}

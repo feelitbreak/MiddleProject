@@ -7,7 +7,6 @@ using Microsoft.Extensions.Diagnostics.HealthChecks;
 /// Reported as <see cref="HealthStatus.Degraded"/> (not unhealthy) when WeakApp is unreachable,
 /// because the polling service recovers automatically once WeakApp comes back.
 /// </summary>
-/// <param name="weakAppService">The WeakApp service used to probe the health endpoint.</param>
 public sealed class WeakAppHealthCheck(IWeakAppService weakAppService) : IHealthCheck
 {
     /// <inheritdoc/>

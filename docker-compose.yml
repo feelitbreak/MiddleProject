@@ -6,6 +6,8 @@ services:
     image: feelitbreak/middle_project:weak-app
     ports:
       - 8080:8080
+    # No healthcheck: the injector deliberately treats an unreachable WeakApp as degraded rather
+    # than fatal, so gating start-up on it would add nothing but a slower boot.
   data_injector:
     container_name: data_injector
     image: feelitbreak/middle_project:data-injector-service
@@ -18,8 +20,51 @@ services:
       - 8082:8080
       - 8083:8081
     depends_on:
-      - kafka
-      - weak_app
+      kafka:
+        condition: service_healthy
+      weak_app:
+        condition: service_started
+  data_processor:
+    container_name: data_processor
+    image: feelitbreak/middle_project:data-processor-service
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - Kafka__BootstrapServers=kafka:29092
+      # Local dev only — no real credentials involved.
+      # The session time zone is pinned so that date_trunc buckets in UTC rather than local time.
+      - Database__ConnectionString=Host=postgres;Port=5432;Database=meterdb;Username=postgres;Password=postgres;Options=-c timezone=UTC
+      - Database__ApplyMigrationsOnStartup=true
+    ports:
+      - 8084:8080
+      - 8085:8081
+    depends_on:
+      kafka:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+  postgres:
+    container_name: postgres
+    image: postgres:18-alpine
+    ports:
+      - 5432:5432
+    environment:
+      # Local dev only — no real credentials involved.
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: meterdb
+      TZ: UTC
+      PGTZ: UTC
+    volumes:
+      # PostgreSQL 18 keeps its data in a version-specific subdirectory, so the mount belongs at
+      # /var/lib/postgresql rather than the /var/lib/postgresql/data used by earlier majors.
+      # Mounting the old path leaves the volume unused and the container refuses to start.
+      - postgres_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d meterdb"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
   kafka:
     image: apache/kafka:latest
     hostname: kafka
@@ -43,6 +88,14 @@ services:
       KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
       KAFKA_LOG_DIRS: /tmp/kraft-combined-logs
       CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk
+    healthcheck:
+      # Listing topics only succeeds once the broker is actually accepting client connections,
+      # which "the container started" does not imply.
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:29092 --list || exit 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 12
+      start_period: 20s
   kafka-ui:
     image: provectuslabs/kafka-ui:latest
     container_name: kafka-cluster-ui
@@ -52,7 +105,8 @@ services:
       KAFKA_CLUSTERS_0_NAME: local
       KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
     depends_on:
-      - kafka
+      kafka:
+        condition: service_healthy
   watchtower:
     container_name: watchtower
     image: nickfedor/watchtower
@@ -72,6 +126,7 @@ services:
       - prometheus_data:/prometheus
     depends_on:
       - data_injector
+      - data_processor
   grafana:
     container_name: grafana
     image: grafana/grafana:latest
@@ -93,3 +148,4 @@ services:
 volumes:
   prometheus_data:
   grafana_data:
+  postgres_data:

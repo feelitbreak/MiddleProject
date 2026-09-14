@@ -14,7 +14,7 @@ using Testcontainers.Kafka;
 /// Exercises <see cref="KafkaProducer"/> against a real broker started in a container, because the
 /// producer builds its <see cref="IProducer{TKey, TValue}"/> in the constructor and cannot be
 /// driven through a mock. Covers the message key format, the serialized payload, the
-/// <see cref="KafkaOptions.Acks"/> mapping, and the flush performed on disposal.
+/// <see cref="KafkaOptions.Acks"/> settings, and the flush performed on disposal.
 /// <para>
 /// Requires Docker. Filter these out with <c>--filter "Category!=Integration"</c> when no
 /// container runtime is available.
@@ -96,20 +96,22 @@ public sealed class KafkaProducerIntegrationTests(KafkaContainerFixture fixture)
     }
 
     /// <summary>
-    /// Verifies every arm of the <see cref="KafkaOptions.Acks"/> switch, including the fallback for
-    /// an unrecognised value, by reading the produced message back off the broker. Idempotence is
-    /// disabled for the non-"All" cases because librdkafka rejects a weaker acks setting while the
-    /// idempotent producer is enabled.
+    /// Verifies every <see cref="KafkaOptions.Acks"/> value is accepted by the broker, by reading
+    /// the produced message back off it. Idempotence is disabled for the non-All cases because
+    /// librdkafka rejects a weaker acks setting while the idempotent producer is enabled --- a
+    /// combination <see cref="KafkaOptions.Validate"/> now also rejects at startup.
+    /// <para>
+    /// There is no longer an "unrecognised value" case to cover: <see cref="KafkaOptions.Acks"/>
+    /// is an enum, so an unknown value fails during configuration binding rather than silently
+    /// falling back to <see cref="Acks.All"/>.
+    /// </para>
     /// </summary>
-    /// <param name="acks">The configured acks value.</param>
-    /// <param name="enableIdempotence">Whether the idempotent producer is enabled.</param>
     [Theory]
-    [InlineData("All", true)]
-    [InlineData("Leader", false)]
-    [InlineData("None", false)]
-    [InlineData("not-a-known-value", true)]
+    [InlineData(Acks.All, true)]
+    [InlineData(Acks.Leader, false)]
+    [InlineData(Acks.None, false)]
     public async Task ProduceAsync_AcksSetting_IsAcceptedByBroker(
-        string acks,
+        Acks acks,
         bool enableIdempotence
     )
     {
@@ -155,7 +157,7 @@ public sealed class KafkaProducerIntegrationTests(KafkaContainerFixture fixture)
 
     private KafkaProducer BuildProducer(
         string topic,
-        string acks = "All",
+        Acks acks = Acks.All,
         bool enableIdempotence = true
     )
     {
@@ -180,9 +182,6 @@ public sealed class KafkaProducerIntegrationTests(KafkaContainerFixture fixture)
     /// Reads exactly <paramref name="count"/> messages from the beginning of
     /// <paramref name="topic"/> using a throwaway consumer group.
     /// </summary>
-    /// <param name="topic">The topic to read from.</param>
-    /// <param name="count">The number of messages expected.</param>
-    /// <returns>The consumed messages, in offset order.</returns>
     private List<ConsumeResult<string, string>> Consume(string topic, int count)
     {
         var config = new ConsumerConfig

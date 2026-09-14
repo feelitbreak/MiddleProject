@@ -86,9 +86,6 @@ public sealed class CorsConfigurationTests
     /// Registers the CORS configuration against an in-memory configuration source and returns the
     /// resulting "AllowOrigins" policy.
     /// </summary>
-    /// <param name="allowLocalhost">Value bound to <c>Cors:AllowLocalhost</c>.</param>
-    /// <param name="allowedOrigins">Values bound to <c>Cors:AllowedOrigins</c>.</param>
-    /// <returns>The built CORS policy.</returns>
     private static CorsPolicy BuildPolicy(
         bool allowLocalhost = true,
         string[]? allowedOrigins = null

@@ -20,11 +20,6 @@ using System.Diagnostics;
 /// </list>
 /// </para>
 /// </summary>
-/// <param name="weakAppService">Service for fetching meter readings.</param>
-/// <param name="kafkaProducer">Producer for publishing readings to Kafka.</param>
-/// <param name="options">WeakApp configuration options.</param>
-/// <param name="logger">Logger instance.</param>
-/// <param name="metrics">Business metrics recorder.</param>
 public sealed class MeterPollingService(
     IWeakAppService weakAppService,
     IKafkaProducer kafkaProducer,
@@ -95,36 +90,41 @@ public sealed class MeterPollingService(
         CancellationToken cancellationToken
     )
     {
-        var published = 0;
-        var failed = 0;
+        // Every reading in a poll belongs to a distinct sensor, and therefore to a distinct
+        // message key, so publishing them concurrently preserves the per-key ordering guarantee
+        // the key exists to provide while avoiding one broker round-trip per reading.
+        var outcomes = await Task.WhenAll(
+            readings.Select(reading => this.TryPublishAsync(reading, cancellationToken))
+        );
 
-        foreach (var reading in readings)
-        {
-            if (cancellationToken.IsCancellationRequested)
-            {
-                break;
-            }
-
-            try
-            {
-                await kafkaProducer.ProduceAsync(reading, cancellationToken);
-                published++;
-            }
-            catch (OperationCanceledException)
-            {
-                throw;
-            }
-            catch (Exception ex) when (ex is not OperationCanceledException)
-            {
-                logger.ProduceFailed(ex, reading.Type, reading.Name);
-                metrics.KafkaMessagesFailed.Add(1);
-                failed++;
-            }
-        }
+        var published = outcomes.Count(outcome => outcome);
+        var failed = outcomes.Length - published;
 
         metrics.MeterReadingsPolled.Add(readings.Count);
         logger.CycleComplete(published, failed, readings.Count);
         return TimeSpan.FromSeconds(this.options.PollingIntervalSeconds);
+    }
+
+    private async Task<bool> TryPublishAsync(
+        MeterReading reading,
+        CancellationToken cancellationToken
+    )
+    {
+        try
+        {
+            await kafkaProducer.ProduceAsync(reading, cancellationToken);
+            return true;
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.ProduceFailed(ex, reading.Type, reading.Name);
+            metrics.KafkaMessagesFailed.Add(1);
+            return false;
+        }
     }
 
     private static async Task SafeDelayAsync(TimeSpan delay, CancellationToken cancellationToken)

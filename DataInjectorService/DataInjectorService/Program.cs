@@ -1,7 +1,7 @@
 namespace DataInjectorService;
 
+using DataInjectorService.Endpoints;
 using DataInjectorService.Extensions;
-using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Serilog;
 using System.Diagnostics.CodeAnalysis;
 
@@ -14,12 +14,10 @@ using System.Diagnostics.CodeAnalysis;
 /// declaration carrying the attribute (sonar-dotnet#9562).
 /// </para>
 /// </summary>
-[ExcludeFromCodeCoverage]
+[ExcludeFromCodeCoverage(Justification = "Host composition and start-up wiring.")]
 public static class Program
 {
     /// <summary>Builds, configures and runs the web application.</summary>
-    /// <param name="args">Command-line arguments forwarded to the host builder.</param>
-    /// <returns>A task that completes when the host shuts down.</returns>
     public static async Task Main(string[] args)
     {
         Log.Logger = new LoggerConfiguration().WriteTo.Console().CreateBootstrapLogger();
@@ -64,30 +62,7 @@ public static class Program
             // Local/dev only: not restricted to internal networks here.
             app.MapPrometheusScrapingEndpoint();
 
-            // Liveness: the service process is up.
-            app.MapHealthChecks(
-                "/health/live",
-                new()
-                {
-                    Predicate = _ => false,
-                    ResultStatusCodes = { [HealthStatus.Healthy] = StatusCodes.Status200OK },
-                }
-            );
-
-            // Readiness: liveness + WeakApp reachability.
-            app.MapHealthChecks(
-                "/health/ready",
-                new()
-                {
-                    Predicate = check => check.Tags.Contains("ready"),
-                    ResultStatusCodes =
-                    {
-                        [HealthStatus.Healthy] = StatusCodes.Status200OK,
-                        [HealthStatus.Degraded] = StatusCodes.Status200OK,
-                        [HealthStatus.Unhealthy] = StatusCodes.Status503ServiceUnavailable,
-                    },
-                }
-            );
+            app.MapHealthEndpoints();
 
             await app.RunAsync();
         }

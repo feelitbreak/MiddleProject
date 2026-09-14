@@ -1,0 +1,5 @@
+# EF Core writes these files; their shape is the tooling's to decide, not ours.
+# Without this, `dotnet format --verify-no-changes` fails CI on every new migration, because the
+# generated code places usings outside the namespace while this repository places them inside.
+[*.cs]
+generated_code = true
