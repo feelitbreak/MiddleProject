@@ -9,7 +9,6 @@ ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
 
 # Project files first, so that a source-only change does not invalidate the restore layer.
-COPY Directory.Build.props ./
 COPY src/Domain/DataProcessorService.Domain.csproj src/Domain/
 COPY src/Application/DataProcessorService.Application.csproj src/Application/
 COPY src/Infrastructure/DataProcessorService.Infrastructure.csproj src/Infrastructure/

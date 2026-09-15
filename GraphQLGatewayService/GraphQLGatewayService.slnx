@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Domain/GraphQLGatewayService.Domain.csproj" />
+    <Project Path="src/Infrastructure/GraphQLGatewayService.Infrastructure.csproj" />
+    <Project Path="src/Api/GraphQLGatewayService.Api.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/UnitTests/GraphQLGatewayService.UnitTests.csproj" />
+    <Project Path="tests/IntegrationTests/GraphQLGatewayService.IntegrationTests.csproj" />
+  </Folder>
+</Solution>

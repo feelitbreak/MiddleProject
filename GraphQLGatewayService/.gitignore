@@ -1,0 +1,3 @@
+# Written alongside the exported SDL by `dotnet run -- schema export`. It is client tooling
+# configuration carrying a hardcoded localhost URL, not part of the schema contract.
+src/Api/schema-settings.json
