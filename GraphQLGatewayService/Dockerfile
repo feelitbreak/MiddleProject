@@ -9,14 +9,13 @@ ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
 
 # Project files first, so that a source-only change does not invalidate the restore layer.
-COPY src/Domain/DataProcessorService.Domain.csproj src/Domain/
-COPY src/Application/DataProcessorService.Application.csproj src/Application/
-COPY src/Infrastructure/DataProcessorService.Infrastructure.csproj src/Infrastructure/
-COPY src/Api/DataProcessorService.Api.csproj src/Api/
-RUN dotnet restore src/Api/DataProcessorService.Api.csproj
+COPY src/Domain/GraphQLGatewayService.Domain.csproj src/Domain/
+COPY src/Infrastructure/GraphQLGatewayService.Infrastructure.csproj src/Infrastructure/
+COPY src/Api/GraphQLGatewayService.Api.csproj src/Api/
+RUN dotnet restore src/Api/GraphQLGatewayService.Api.csproj
 
 COPY src/ src/
-RUN dotnet publish src/Api/DataProcessorService.Api.csproj \
+RUN dotnet publish src/Api/GraphQLGatewayService.Api.csproj \
     -c "$BUILD_CONFIGURATION" \
     -o /app/publish \
     --no-restore \
@@ -25,4 +24,4 @@ RUN dotnet publish src/Api/DataProcessorService.Api.csproj \
 FROM base AS final
 WORKDIR /app
 COPY --from=build /app/publish .
-ENTRYPOINT ["dotnet", "DataProcessorService.Api.dll"]
+ENTRYPOINT ["dotnet", "GraphQLGatewayService.Api.dll"]

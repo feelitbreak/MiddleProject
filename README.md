@@ -7,6 +7,10 @@ A microservices system built around an intentionally unstable external API. See
 
 ```
 WeakApp API --(HTTP poll)--> DataInjectorService --(Kafka: meter-readings)--> DataProcessorService --> PostgreSQL
+                                                                                                          |
+                                                                                                  (read-only queries)
+                                                                                                          v
+                                                            GraphQL clients <--(GraphQL: /graphql)-- GraphQLGatewayService
 ```
 
 | Service | Role | Ports (host) |
@@ -14,6 +18,7 @@ WeakApp API --(HTTP poll)--> DataInjectorService --(Kafka: meter-readings)--> Da
 | [`weak_app`](WeakApp) | The unstable external API being consumed | 8080 |
 | [`data_injector`](DataInjectorService) | Polls WeakApp, publishes readings to Kafka | 8082, 8083 |
 | [`data_processor`](DataProcessorService) | Consumes readings, persists them to PostgreSQL | 8084, 8085 |
+| [`graphql_gateway`](GraphQLGatewayService) | Serves the dashboard's GraphQL API, reading PostgreSQL directly | 8086, 8087 |
 | `postgres` | Reading storage | 5432 |
 | `kafka` | Message queue | 9092 |
 | `kafka-cluster-ui` | Kafka topic and consumer group browser | 8070 |
@@ -21,6 +26,11 @@ WeakApp API --(HTTP poll)--> DataInjectorService --(Kafka: meter-readings)--> Da
 | `grafana` | Dashboards | 3000 |
 
 Bring everything up with `docker compose up -d`.
+
+Services share no assemblies. Where two of them need the same shape, each carries its own copy —
+the injector and processor duplicate the Kafka message contract, and the gateway duplicates a
+read-only EF mapping over the readings tables. **DataProcessorService owns that schema** and is the
+only service that migrates it; the gateway reads and never writes.
 
 The local PostgreSQL is `meterdb` with `postgres`/`postgres` — local development credentials only:
 

@@ -1,0 +1,274 @@
+schema {
+  query: Query
+}
+
+type Query {
+  """
+  Aggregates one metric into time periods, one series per location. Only the metric is
+  required; the interval defaults to hourly and the range to a window suited to it. For
+  MOTION_DETECTED the average is the fraction with motion. Capped at 90 days, 2000 periods.
+  """
+  readingAggregates(
+    metric: ReadingMetric!
+    interval: AggregationInterval! = HOUR
+    where: AggregateFilterInput
+  ): [AggregateSeries!]!
+    @listSize(assumedSize: 2000, requireOneSlicingArgument: false)
+    @cost(weight: "10")
+  "Reports whether the gateway and its database are healthy."
+  health: HealthReport! @cost(weight: "10")
+  """
+  Readings matching the filter, newest first. A cursor connection rather than page numbers:
+  readings arrive continuously, so offsets would make page two repeat rows from page one.
+  """
+  readings(
+    "Returns the first _n_ elements from the list."
+    first: Int
+    "Returns the elements in the list that come after the specified cursor."
+    after: String
+    "Returns the last _n_ elements from the list."
+    last: Int
+    "Returns the elements in the list that come before the specified cursor."
+    before: String
+    where: ReadingFilterInput
+  ): ReadingConnection!
+    @listSize(
+      assumedSize: 100
+      slicingArguments: ["first", "last"]
+      slicingArgumentDefaultValue: 25
+      sizedFields: ["edges", "nodes"]
+      requireOneSlicingArgument: false
+    )
+    @cost(weight: "10")
+  "The most recent reading from each sensor matching the filter, for a latest-values display."
+  latestReadings(where: ReadingFilterInput): [Reading!]! @cost(weight: "10")
+  """
+  The sensor catalogue. Sensors are created on first sight during ingestion, so this is what
+  has been observed rather than a configured inventory.
+  """
+  sensors: [Sensor!]! @cost(weight: "10")
+  "Every distinct location, ordered, for a location filter."
+  locations: [String!]! @cost(weight: "10")
+}
+
+"""
+One period of an aggregation: every reading collected between PeriodStart and the
+start of the next period.
+"""
+type AggregatePoint {
+  "Start of the period, in UTC, aligned to the interval's boundary."
+  periodStart: DateTime!
+  count: Int!
+  average: Float!
+  minimum: Float!
+  maximum: Float!
+}
+
+"""
+One location's aggregated series, ordered by period. Grouped server-side because a chart draws
+one line per location.
+"""
+type AggregateSeries {
+  location: String!
+  "The unit the values are measured in, so a chart can label its own axis."
+  unit: String!
+  "The periods, oldest first."
+  points: [AggregatePoint!]!
+}
+
+"The outcome of one health check."
+type HealthCheckEntry {
+  name: String!
+  status: HealthStatus!
+  durationMs: Float!
+}
+
+"""
+The service's health, as seen through the schema. Check descriptions and exceptions are omitted
+because any client can reach this field; the probes report those.
+"""
+type HealthReport {
+  "Gets the worst status across every check."
+  status: HealthStatus!
+  totalDurationMs: Float!
+  checks: [HealthCheckEntry!]!
+}
+
+"A cursor that points to a specific page."
+type PageCursor {
+  "The page number."
+  page: Int!
+  "The cursor."
+  cursor: String!
+}
+
+"Information about pagination in a connection."
+type PageInfo {
+  "Indicates whether more edges exist following the set defined by the clients arguments."
+  hasNextPage: Boolean!
+  "Indicates whether more edges exist prior the set defined by the clients arguments."
+  hasPreviousPage: Boolean!
+  "When paginating backwards, the cursor to continue."
+  startCursor: String
+  "When paginating forwards, the cursor to continue."
+  endCursor: String
+  "A list of cursors to continue paginating forwards."
+  forwardCursors: [PageCursor!]!
+  "A list of cursors to continue paginating backwards."
+  backwardCursors: [PageCursor!]!
+}
+
+"""
+A single reading, flat: values that do not apply to the sensor's type are null. One uniform
+type keeps clients free of type switches, and under table-per-hierarchy it costs nothing.
+"""
+type Reading {
+  id: Long!
+  sensor: Sensor!
+  "The instant the reading was collected, in UTC."
+  collectedAt: DateTime!
+  "CO2 concentration in ppm, for air quality readings."
+  co2: Int
+  "PM2.5 concentration in ug/m3, for air quality readings."
+  pm25: Int
+  "Relative humidity percentage, for air quality readings."
+  humidity: Int
+  motionDetected: Boolean
+  "Energy consumption in kWh, for energy readings."
+  energyKwh: Float
+}
+
+"A connection to a list of items."
+type ReadingConnection {
+  "A list of edges."
+  edges: [ReadingEdge!]
+  "A flattened list of the nodes"
+  nodes: [Reading!]
+  "Information to aid in pagination."
+  pageInfo: PageInfo!
+  "Identifies the total count of items in the connection."
+  totalCount: Int! @cost(weight: "10")
+}
+
+type ReadingEdge {
+  "The item at the end of the edge."
+  node: Reading!
+  "A cursor for use in pagination."
+  cursor: String!
+}
+
+"A sensor in the catalogue, as exposed by the schema."
+type Sensor {
+  "Gets the surrogate key."
+  id: Int!
+  "Gets the location the sensor reports from."
+  name: String!
+  "Gets the kind of data the sensor emits."
+  type: SensorType!
+}
+
+"""
+Narrows which readings an aggregation covers. Deliberately not ReadingFilter: the
+metric already fixes the sensor type, so one here could only contradict it.
+"""
+input AggregateFilterInput {
+  location: String
+  "Inclusive lower bound. Defaults to a window suited to the interval."
+  from: DateTime
+  "Exclusive upper bound. Defaults to now."
+  to: DateTime
+}
+
+"""
+Narrows which readings a query returns. Every member is optional, so a client can hold one
+filter object and send it unchanged.
+"""
+input ReadingFilterInput {
+  location: String
+  sensorType: SensorType
+  "Inclusive lower bound on collection time."
+  from: DateTime
+  "Exclusive upper bound on collection time."
+  to: DateTime
+}
+
+"""
+How long one period covers. Each value names a PostgreSQL truncation unit, which is what keeps
+period boundaries aligned to the calendar rather than to the range's start.
+"""
+enum AggregationInterval {
+  HOUR
+  DAY
+  WEEK
+  MONTH
+}
+
+enum HealthStatus {
+  UNHEALTHY
+  DEGRADED
+  HEALTHY
+}
+
+"""
+The numeric series being aggregated. Each value implies its sensor type, which is what lets one
+aggregation query serve every reading kind.
+"""
+enum ReadingMetric {
+  "CO2 concentration in ppm."
+  CO2
+  "PM2.5 concentration in ug/m3."
+  PM25
+  "Relative humidity percentage."
+  HUMIDITY
+  "Motion as 1 or 0, so that a period's average is the fraction with motion."
+  MOTION_DETECTED
+  "Energy consumption in kWh."
+  ENERGY_KWH
+}
+
+"""
+The kind of sensor a reading came from. Stored as the meter_readings discriminator and
+the sensors.sensor_type column.
+"""
+enum SensorType {
+  "Reports CO2, PM2.5 and humidity."
+  AIR_QUALITY
+  "Reports whether motion was detected."
+  MOTION
+  "Reports consumption in kWh."
+  ENERGY
+}
+
+"The `DateTime` scalar type represents a date and time with time zone offset information."
+scalar DateTime
+  @specifiedBy(url: "https://scalars.graphql.org/chillicream/date-time.html")
+
+"The `Long` scalar type represents a signed 64-bit integer."
+scalar Long
+  @specifiedBy(url: "https://scalars.graphql.org/chillicream/long.html")
+
+"The purpose of the `cost` directive is to define a `weight` for GraphQL types, fields, and arguments. Static analysis can use these weights when calculating the overall cost of a query or response."
+directive @cost(
+  "The `weight` argument defines what value to add to the overall cost for every appearance, or possible appearance, of a type, field, argument, etc."
+  weight: String!
+) on
+  | SCALAR
+  | OBJECT
+  | FIELD_DEFINITION
+  | ARGUMENT_DEFINITION
+  | ENUM
+  | INPUT_FIELD_DEFINITION
+
+"The purpose of the `@listSize` directive is to either inform the static analysis about the size of returned lists (if that information is statically available), or to point the analysis to where to find that information."
+directive @listSize(
+  "The `assumedSize` argument can be used to statically define the maximum length of a list returned by a field."
+  assumedSize: Int
+  "The `slicingArguments` argument can be used to define which of the field's arguments with numeric type are slicing arguments, so that their value determines the size of the list returned by that field. It may specify a list of multiple slicing arguments."
+  slicingArguments: [String!]
+  "The `slicingArgumentDefaultValue` argument can be used to define a default value for a slicing argument, which is used if the argument is not present in a query."
+  slicingArgumentDefaultValue: Int
+  "The `sizedFields` argument can be used to define that the value of the `assumedSize` argument or of a slicing argument does not affect the size of a list returned by a field itself, but that of a list returned by one of its sub-fields."
+  sizedFields: [String!]
+  "The `requireOneSlicingArgument` argument can be used to inform the static analysis that it should expect that exactly one of the defined slicing arguments is present in a query. If that is not the case (i.e., if none or multiple slicing arguments are present), the static analysis may throw an error."
+  requireOneSlicingArgument: Boolean = true
+) on FIELD_DEFINITION

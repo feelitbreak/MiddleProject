@@ -42,6 +42,21 @@ services:
         condition: service_healthy
       postgres:
         condition: service_healthy
+  graphql_gateway:
+    container_name: graphql_gateway
+    image: feelitbreak/middle_project:graphql-gateway-service
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      # Local dev only — no real credentials involved.
+      # Read-only: DataProcessorService owns this schema and applies its migrations.
+      # The session time zone is pinned so that date_trunc buckets in UTC rather than local time.
+      - Database__ConnectionString=Host=postgres;Port=5432;Database=meterdb;Username=postgres;Password=postgres;Options=-c timezone=UTC
+    ports:
+      - 8086:8080
+      - 8087:8081
+    depends_on:
+      postgres:
+        condition: service_healthy
   postgres:
     container_name: postgres
     image: postgres:18-alpine
@@ -127,6 +142,7 @@ services:
     depends_on:
       - data_injector
       - data_processor
+      - graphql_gateway
   grafana:
     container_name: grafana
     image: grafana/grafana:latest
