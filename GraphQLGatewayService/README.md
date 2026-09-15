@@ -187,10 +187,24 @@ Commit the result. CI runs the same command and fails on a diff.
 
 ## Testing
 
-No test suites yet; they land in a follow-up change together with the `tests/` projects, their
-entries in `GraphQLGatewayService.slnx`, and the coverage step in the workflow. When they do:
-xUnit v3 with Moq and plain `Assert.*`, `Method_Scenario_ExpectedResult` naming, and integration
-tests on Testcontainers tagged `[Trait("Category", "Integration")]`.
+xUnit v3 with Moq and plain `Assert.*`, named `Method_Scenario_ExpectedResult`.
+
+`tests/UnitTests` covers the pure logic: the aggregation window's range and period caps, the stored
+sensor-type vocabulary, the metric units, and the error path — that a failure carrying an exception
+is replaced by a generic message and a correlation id, with nothing leaking into any part of the
+response.
+
+`tests/IntegrationTests` runs against PostgreSQL via Testcontainers, tagged
+`[Trait("Category", "Integration")]`, and needs a working Docker daemon. The schema is created from
+this service's own model, which is what proves the duplicated mapping still describes a usable
+database; `SchemaContractTests` then pins the physical column names, the `timestamptz` type and the
+discriminator spellings, so a rename in DataProcessorService fails here rather than at runtime.
+`KeysetPaginationTests` pages across an insert at the head of the feed — the case offset paging
+gets wrong. `GraphQLExecutionTests` drives the real request executor and asserts on the JSON a
+client receives, covering the resolvers, the paging middleware, the cost ceiling in both directions
+and introspection being off outside Development.
+
+Skip the containerised suites with `dotnet test --filter-not-trait "Category=Integration"`.
 
 ### Verifying a change
 
