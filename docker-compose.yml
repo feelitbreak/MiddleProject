@@ -57,6 +57,20 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+  notification_service:
+    container_name: notification_service
+    image: feelitbreak/middle_project:notification-service
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - Kafka__BootstrapServers=kafka:29092
+    ports:
+      - 8088:8080
+      - 8089:8081
+    depends_on:
+      kafka:
+        condition: service_healthy
+    # No postgres dependency: this service reads no database. It forwards a signal and the browser
+    # refetches the gateway.
   postgres:
     container_name: postgres
     image: postgres:18-alpine
@@ -143,6 +157,7 @@ services:
       - data_injector
       - data_processor
       - graphql_gateway
+      - notification_service
   grafana:
     container_name: grafana
     image: grafana/grafana:latest

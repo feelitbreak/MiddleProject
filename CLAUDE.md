@@ -5,6 +5,10 @@ for the brief and each service's own README for detail.
 
 ```
 WeakApp --(HTTP)--> DataInjectorService --(Kafka)--> DataProcessorService --> PostgreSQL
+                                                             |
+                                                          (Kafka)
+                                                             v
+                                                    NotificationService --(SignalR)--> browser
 ```
 
 Services are independently deployable: no shared assemblies between them. Duplicating a message
@@ -80,4 +84,4 @@ same preference for platform and library built-ins over bespoke utilities.
 
 `docker compose up -d` from the repo root. Postgres `meterdb` (`postgres`/`postgres`, local only),
 Kafka UI on 8070, Prometheus 9090, Grafana 3000, injector 8082, processor 8084,
-gateway 8086.
+gateway 8086, notifications 8088.
