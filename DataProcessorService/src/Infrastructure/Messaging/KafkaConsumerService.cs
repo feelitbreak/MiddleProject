@@ -15,8 +15,8 @@ using System.Diagnostics;
 /// <summary>
 /// Consumes the readings topic in batches and persists each batch atomically.
 /// <para>
-/// Ordering within a batch is decode, then dead-letter the undecodable, then persist, then commit
-/// offsets. A crash in the window between the database commit and the offset commit redelivers the
+/// Ordering within a batch is decode, then dead-letter the undecodable, then persist, then
+/// announce, then commit offsets. A crash in the window between the database commit and the offset commit redelivers the
 /// batch, which the idempotent ingestion statement turns into a no-op --- that window is precisely
 /// why conflict-skipping insertion is load-bearing rather than a nicety.
 /// </para>
@@ -24,6 +24,7 @@ using System.Diagnostics;
 public sealed class KafkaConsumerService(
     IServiceScopeFactory scopeFactory,
     IDeadLetterProducer deadLetterProducer,
+    IReadingsPersistedProducer readingsPersistedProducer,
     ConsumerHeartbeat heartbeat,
     DataProcessorMetrics metrics,
     IOptions<KafkaOptions> options,
@@ -201,15 +202,16 @@ public sealed class KafkaConsumerService(
 
         if (readings.Count > 0)
         {
-            var persisted = await this.PersistWithRetriesAsync(consumer, readings, stoppingToken);
+            var summary = await this.PersistWithRetriesAsync(consumer, readings, stoppingToken);
 
-            if (!persisted)
+            if (summary is null)
             {
                 await this.DeadLetterBatchAsync(batch, stoppingToken);
             }
             else
             {
                 RecordLag(readings);
+                await this.AnnouncePersistedAsync(readings, summary, stoppingToken);
             }
         }
 
@@ -219,9 +221,10 @@ public sealed class KafkaConsumerService(
     }
 
     /// <summary>
-    /// Persists the batch, retrying transient failures with capped exponential backoff.
+    /// Persists the batch, retrying transient failures with capped exponential backoff. Returns
+    /// <see langword="null"/> when the batch could not be stored at all.
     /// </summary>
-    private async Task<bool> PersistWithRetriesAsync(
+    private async Task<IngestReadingBatchSummary?> PersistWithRetriesAsync(
         IConsumer<byte[], byte[]> consumer,
         List<ReadingToIngest> readings,
         CancellationToken stoppingToken
@@ -231,15 +234,14 @@ public sealed class KafkaConsumerService(
         {
             try
             {
-                await this.PersistAsync(readings, stoppingToken);
-                return true;
+                return await this.PersistAsync(readings, stoppingToken);
             }
             catch (Exception ex) when (TransientFailureClassifier.IsTransient(ex))
             {
                 if (attempt == this.options.MaxBatchAttempts)
                 {
                     logger.BatchAbandoned(ex, attempt);
-                    return false;
+                    return null;
                 }
 
                 metrics.BatchRetries.Add(1);
@@ -251,14 +253,14 @@ public sealed class KafkaConsumerService(
             {
                 // Not recognised as transient, so retrying cannot help.
                 logger.BatchFailedPermanently(ex);
-                return false;
+                return null;
             }
         }
 
-        return false;
+        return null;
     }
 
-    private async Task PersistAsync(
+    private async Task<IngestReadingBatchSummary> PersistAsync(
         List<ReadingToIngest> readings,
         CancellationToken cancellationToken
     )
@@ -285,6 +287,41 @@ public sealed class KafkaConsumerService(
         metrics.ReadingsInserted.Add(result.Value.Inserted);
         metrics.DuplicatesSkipped.Add(result.Value.DuplicatesSkipped);
         logger.BatchPersisted(result.Value.Inserted, result.Value.DuplicatesSkipped);
+
+        return result.Value;
+    }
+
+    /// <summary>
+    /// Announces the batch on the readings-persisted topic. Here rather than in the handler
+    /// because <c>SendAsync</c> returns only once <c>UnitOfWorkBehavior</c> committed, so a
+    /// consumer cannot outrun the rows. A redelivery inserts nothing and is not announced.
+    /// </summary>
+    private async Task AnnouncePersistedAsync(
+        List<ReadingToIngest> readings,
+        IngestReadingBatchSummary summary,
+        CancellationToken cancellationToken
+    )
+    {
+        if (summary.Inserted == 0)
+        {
+            return;
+        }
+
+        var message = ReadingsPersistedMessage.ForBatch(
+            readings,
+            summary.Inserted,
+            DateTimeOffset.UtcNow
+        );
+
+        try
+        {
+            await readingsPersistedProducer.PublishAsync(message, cancellationToken);
+        }
+        catch (KafkaException ex)
+        {
+            // Never fails the batch: the rows are stored, and the next batch re-announces.
+            logger.ReadingsPersistedPublishFailed(ex, ex.Error.Reason);
+        }
     }
 
     /// <summary>

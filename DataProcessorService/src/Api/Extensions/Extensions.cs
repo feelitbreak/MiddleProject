@@ -164,7 +164,7 @@ public static class Extensions
     }
 
     /// <summary>
-    /// Registers the Kafka consumer, the dead-letter producer and the consumer's liveness signal.
+    /// Registers the Kafka consumer, both producers and the consumer's liveness signal.
     /// </summary>
     public static void AddMessaging(
         this IServiceCollection services,
@@ -179,6 +179,7 @@ public static class Extensions
 
         services.AddSingleton<ConsumerHeartbeat>();
         services.AddSingleton<IDeadLetterProducer, DeadLetterProducer>();
+        services.AddSingleton<IReadingsPersistedProducer, ReadingsPersistedProducer>();
         services.AddHostedService<KafkaConsumerService>();
     }
 

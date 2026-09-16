@@ -210,6 +210,7 @@ public sealed class KafkaConsumerServiceTests(PostgresFixture postgres, KafkaFix
             BootstrapServers = kafka.BootstrapAddress,
             MeterReadingsTopic = topic,
             DeadLetterTopic = deadLetterTopic ?? $"{topic}-dlq",
+            ReadingsPersistedTopic = $"{topic}-persisted",
             ConsumerGroupId = groupId ?? NewGroup(),
             MaxBatchSize = 100,
             BatchLingerMs = 500,
@@ -263,6 +264,7 @@ public sealed class KafkaConsumerServiceTests(PostgresFixture postgres, KafkaFix
         services.AddSingleton<DataProcessorMetrics>();
         services.AddSingleton<ConsumerHeartbeat>();
         services.AddSingleton<IDeadLetterProducer, DeadLetterProducer>();
+        services.AddSingleton<IReadingsPersistedProducer, ReadingsPersistedProducer>();
 
         services.AddCqrs(cqrs =>
             cqrs.AddBehavior(typeof(UnitOfWorkBehavior<,>))

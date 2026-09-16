@@ -16,12 +16,16 @@ them into PostgreSQL.
   (`MeterReadingRepository`).
 - Move messages that can never be processed to `meter-readings-dlq` with failure-reason headers,
   rather than blocking the partition (`DeadLetterProducer`).
+- Announce each committed batch on `meter-readings-persisted`, so downstream services learn that
+  readings are queryable rather than guessing at the batch linger (`ReadingsPersistedProducer`).
 - Expose liveness/readiness health checks and Prometheus metrics.
 
 ## How it fits in the pipeline
 
 ```
 WeakApp API --(HTTP poll)--> DataInjectorService --(Kafka: meter-readings)--> DataProcessorService --> PostgreSQL
+                                                                                     |
+                                                            (Kafka: meter-readings-persisted) --> NotificationService
 ```
 
 ## Architecture
@@ -79,6 +83,26 @@ statement is a constant built from the column constants in `MeterReadingColumns`
 reaches it, values arrive only as typed parameter bindings, and a contract test asserts the
 constants still match the EF model.
 
+### The `meter-readings-persisted` event
+
+One event per committed batch, published by `KafkaConsumerService` after `ISender.SendAsync`
+returns — that is, after `UnitOfWorkBehavior` committed, so the rows are queryable before anyone
+hears about them. A consumer of `meter-readings` would instead fire while the batch was still
+lingering, and the refetch it triggers would read the rows that are not there yet.
+
+```json
+{
+  "publishedAt": "2026-09-16T09:31:25.481+00:00",
+  "readingCount": 18,
+  "newestCollectedAt": "2026-09-15T09:31:23.474862+00:00",
+  "sensors": [{ "location": "Kitchen", "sensorType": "air_quality" }]
+}
+```
+
+A batch that inserted nothing — a redelivery — is not announced. Delivery is at-least-once and not
+transactional: an event lost to a crash between commit and publish is replaced by the next batch
+within seconds, so consumers need only tolerate duplicates.
+
 ## Configuration
 
 Settings are bound from `appsettings.json` / environment variables (`__` separator), validated via
@@ -91,6 +115,7 @@ Settings are bound from `appsettings.json` / environment variables (`__` separat
 | `BootstrapServers` | Comma-separated Kafka broker addresses | `localhost:9092` |
 | `MeterReadingsTopic` | Topic readings are consumed from | `meter-readings` |
 | `DeadLetterTopic` | Topic unprocessable messages are moved to | `meter-readings-dlq` |
+| `ReadingsPersistedTopic` | Topic each committed batch is announced on | `meter-readings-persisted` |
 | `ConsumerGroupId` | Consumer group identifier | `data-processor` |
 | `MaxBatchSize` | Messages accumulated before a batch is written | `500` |
 | `BatchLingerMs` | How long to wait for a partial batch to fill | `2000` |
@@ -218,6 +243,7 @@ maps to a 400 problem response naming what was wrong.
 - **Metrics** (`DataProcessorMetrics`, OpenTelemetry meter `DataProcessorService`):
   - `data_processor.kafka.messages_consumed`, `.batches_processed`, `.batch_retries`
   - `data_processor.kafka.dead_lettered_messages` — tagged by `reason`
+  - `data_processor.kafka.readings_persisted_events_published`
   - `data_processor.database.readings_inserted` / `.readings_duplicates_skipped`
   - `data_processor.kafka.batch_duration`, `.consumer_lag`
   - `data_processor.database.write_duration`
