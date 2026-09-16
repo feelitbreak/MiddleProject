@@ -2,4 +2,8 @@
   <Folder Name="/src/">
     <Project Path="src/NotificationService/NotificationService.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/UnitTests/NotificationService.UnitTests.csproj" />
+    <Project Path="tests/IntegrationTests/NotificationService.IntegrationTests.csproj" />
+  </Folder>
 </Solution>

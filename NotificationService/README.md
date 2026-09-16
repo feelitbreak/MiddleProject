@@ -165,9 +165,23 @@ rows the event referred to.
 
 ## Testing
 
-xUnit v3 with Moq and plain `Assert.*`, named `Method_Scenario_ExpectedResult`. Integration tests use
-Testcontainers, carry `[Trait("Category", "Integration")]` and need a working Docker daemon; skip
-them with `dotnet test --filter-not-trait "Category=Integration"`.
+xUnit v3 with plain `Assert.*`, named `Method_Scenario_ExpectedResult`.
+
+`tests/UnitTests` covers what can be decided without a broker: the decoder's failure paths — an
+empty body, malformed JSON, a bare `null` — the wire contract's camelCase property names, and the
+probes, including that an unassigned consumer is Degraded rather than Unhealthy.
+
+`tests/IntegrationTests` runs the whole service against a Testcontainers broker, tagged
+`[Trait("Category", "Integration")]`, and needs a working Docker daemon. `WebApplicationFactory`
+hosts the real composition root and a `Microsoft.AspNetCore.SignalR.Client` connection subscribes
+over the in-memory server, so a message produced to the topic is asserted on as the browser would
+see it — property names included. It also pins the two decisions that only exist at runtime: a
+message published before start-up is never replayed to a client, and an undecodable message does not
+wedge the partition behind it.
+
+Run only the fast suite with `dotnet test tests/UnitTests`. A solution-wide
+`--filter-not-trait "Category=Integration"` passes its tests but exits **8**, because the
+integration assembly then discovers nothing — the same happens in the sibling services.
 
 ### Verifying a change
 
@@ -175,7 +189,11 @@ them with `dotnet test --filter-not-trait "Category=Integration"`.
 dotnet clean && dotnet build --nologo && dotnet format --verify-no-changes && dotnet test
 ```
 
-The build must end in `0 Warning(s)`. `dotnet csharpier check` does **not** pass on this repository —
+The build must end in `0 Warning(s)`. Pass `--nologo` to `build` only, never to `dotnet test`: the
+Microsoft.Testing.Platform runner in `global.json` receives the flag, rejects it, and reports "Zero
+tests ran" with exit 5 — which looks like a broken test project and is not.
+
+`dotnet csharpier check` does **not** pass on this repository —
 it sorts `System.*` usings first while the `.editorconfig` and every existing file put them last.
 `dotnet format` is the check CI enforces.
 
