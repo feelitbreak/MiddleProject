@@ -39,8 +39,15 @@
   <ul id="events"></ul>
   <p class="empty" id="empty">Waiting for the first event. The injector publishes one per committed batch.</p>
 
-  <script src="https://cdn.jsdelivr.net/npm/@microsoft/signalr@9.0.6/dist/browser/signalr.min.js"></script>
-  <script>
+  <!-- The hash covers the pinned version above; regenerate it on a version bump with
+       curl -sL <url> | openssl dgst -sha384 -binary | openssl base64 -A -->
+  <script
+    src="https://cdn.jsdelivr.net/npm/@microsoft/signalr@9.0.6/dist/browser/signalr.min.js"
+    integrity="sha384-yjZjsx6ABTYSw8qDmEK00a8q7T9O0tw2qTB76Qbvb4POV2gX4A6Yw417CA3VlEks"
+    crossorigin="anonymous"></script>
+  <!-- A module, so that starting the connection can await at the top level. Deferred as a result,
+       which is why the bundle above has already defined signalR by the time this runs. -->
+  <script type="module">
     const state = document.getElementById("state");
     const events = document.getElementById("events");
     const empty = document.getElementById("empty");
@@ -48,6 +55,17 @@
     const setState = (value, text) => {
       state.dataset.state = value;
       state.textContent = text;
+    };
+
+    const span = (text, className) => {
+      const element = document.createElement("span");
+      element.textContent = text;
+
+      if (className) {
+        element.className = className;
+      }
+
+      return element;
     };
 
     const connection = new signalR.HubConnectionBuilder()
@@ -59,21 +77,24 @@
       empty.hidden = true;
 
       const item = document.createElement("li");
+      const count = document.createElement("span");
+      const readings = document.createElement("strong");
+      readings.textContent = event.readingCount;
+      count.append(readings, " reading(s)");
+
       const meta = document.createElement("div");
       meta.className = "meta";
-      meta.innerHTML =
-        `<span class="at">${new Date(event.publishedAt).toLocaleTimeString()}</span>` +
-        `<span><strong>${event.readingCount}</strong> reading(s)</span>` +
-        `<span>newest ${new Date(event.newestCollectedAt).toLocaleTimeString()}</span>`;
+      meta.append(
+        span(new Date(event.publishedAt).toLocaleTimeString(), "at"),
+        count,
+        span(`newest ${new Date(event.newestCollectedAt).toLocaleTimeString()}`)
+      );
       item.append(meta);
 
       const sensors = document.createElement("div");
       sensors.className = "sensors";
       for (const sensor of event.sensors) {
-        const chip = document.createElement("span");
-        chip.className = "sensor";
-        chip.textContent = `${sensor.location} · ${sensor.sensorType}`;
-        sensors.append(chip);
+        sensors.append(span(`${sensor.location} · ${sensor.sensorType}`, "sensor"));
       }
       item.append(sensors);
 
@@ -84,9 +105,12 @@
     connection.onreconnected(() => setState("connected", "connected"));
     connection.onclose(() => setState("disconnected", "disconnected"));
 
-    connection.start()
-      .then(() => setState("connected", "connected"))
-      .catch(error => setState("disconnected", `failed: ${error}`));
+    try {
+      await connection.start();
+      setState("connected", "connected");
+    } catch (error) {
+      setState("disconnected", `failed: ${error}`);
+    }
   </script>
 </body>
 </html>
