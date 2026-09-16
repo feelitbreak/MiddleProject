@@ -117,6 +117,24 @@ internal static class KafkaConsumerServiceLog
         }
     }
 
+    /// <summary>Logs a failure to announce a batch that was nevertheless stored.</summary>
+    internal static void ReadingsPersistedPublishFailed(
+        this ILogger<KafkaConsumerService> logger,
+        Exception exception,
+        string reason
+    )
+    {
+        if (logger.IsEnabled(LogLevel.Warning))
+        {
+            logger.LogWarning(
+                exception,
+                "Publishing the readings-persisted event failed; the batch is stored and the next "
+                    + "one will announce it: {Reason}",
+                reason
+            );
+        }
+    }
+
     /// <summary>Logs a transient batch failure that will be retried.</summary>
     internal static void BatchRetrying(
         this ILogger<KafkaConsumerService> logger,
@@ -166,6 +184,30 @@ internal static class KafkaConsumerServiceLog
             logger.LogError(
                 exception,
                 "Persisting a batch failed for a reason that retrying cannot fix; dead-lettering it"
+            );
+        }
+    }
+}
+
+/// <summary>Logging extensions for <see cref="ReadingsPersistedProducer"/>.</summary>
+[ExcludeFromCodeCoverage(Justification = "Logging message definitions: no branching behaviour to cover.")]
+internal static class ReadingsPersistedProducerLog
+{
+    /// <summary>Logs an announced batch.</summary>
+    internal static void ReadingsPersisted(
+        this ILogger<ReadingsPersistedProducer> logger,
+        string topic,
+        int readingCount,
+        int sensorCount
+    )
+    {
+        if (logger.IsEnabled(LogLevel.Debug))
+        {
+            logger.LogDebug(
+                "Announced {ReadingCount} reading(s) across {SensorCount} sensor(s) on {Topic}",
+                readingCount,
+                sensorCount,
+                topic
             );
         }
     }

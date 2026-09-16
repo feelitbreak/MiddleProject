@@ -46,6 +46,12 @@ public sealed class DataProcessorMetrics : IDisposable
             description: "Number of messages moved to the dead-letter topic, tagged by reason."
         );
 
+        this.ReadingsPersistedEventsPublished = this.meter.CreateCounter<long>(
+            "data_processor.kafka.readings_persisted_events_published",
+            unit: "{event}",
+            description: "Number of events published to the readings-persisted topic."
+        );
+
         this.ReadingsInserted = this.meter.CreateCounter<long>(
             "data_processor.database.readings_inserted",
             unit: "{reading}",
@@ -84,6 +90,9 @@ public sealed class DataProcessorMetrics : IDisposable
     public Counter<long> BatchRetries { get; }
 
     public Counter<long> DeadLetteredMessages { get; }
+
+    /// <summary>Trails <see cref="BatchesProcessed"/> by the batches that inserted nothing.</summary>
+    public Counter<long> ReadingsPersistedEventsPublished { get; }
 
     public Counter<long> ReadingsInserted { get; }
 

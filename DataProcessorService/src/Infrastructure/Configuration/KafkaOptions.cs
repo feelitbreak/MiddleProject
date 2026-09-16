@@ -3,7 +3,7 @@ namespace DataProcessorService.Infrastructure.Configuration;
 using System.ComponentModel.DataAnnotations;
 
 /// <summary>
-/// Strongly-typed configuration for the Kafka consumer and the dead-letter producer.
+/// Strongly-typed configuration for the Kafka consumer and the two producers.
 /// Bound from the "Kafka" section in appsettings / environment variables.
 /// </summary>
 /// <remarks>
@@ -27,6 +27,12 @@ public sealed class KafkaOptions : IValidatableObject
     /// </summary>
     [Required(AllowEmptyStrings = false)]
     public string DeadLetterTopic { get; set; } = "meter-readings-dlq";
+
+    /// <summary>
+    /// Gets or sets the topic announcing that a batch of readings has been committed.
+    /// </summary>
+    [Required(AllowEmptyStrings = false)]
+    public string ReadingsPersistedTopic { get; set; } = "meter-readings-persisted";
 
     /// <summary>Gets or sets the consumer group identifier.</summary>
     [Required(AllowEmptyStrings = false)]
@@ -80,6 +86,26 @@ public sealed class KafkaOptions : IValidatableObject
                 "The dead-letter topic must differ from the readings topic, otherwise poison "
                     + "messages are republished to the topic they were just rejected from.",
                 [nameof(this.DeadLetterTopic)]
+            );
+        }
+
+        if (
+            string.Equals(
+                this.ReadingsPersistedTopic,
+                this.MeterReadingsTopic,
+                StringComparison.Ordinal
+            )
+            || string.Equals(
+                this.ReadingsPersistedTopic,
+                this.DeadLetterTopic,
+                StringComparison.Ordinal
+            )
+        )
+        {
+            yield return new(
+                "The readings-persisted topic must differ from the readings and dead-letter "
+                    + "topics, otherwise a completion signal is fed back in as a reading.",
+                [nameof(this.ReadingsPersistedTopic)]
             );
         }
     }

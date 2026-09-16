@@ -22,10 +22,24 @@ public sealed class KafkaOptionsTests
 
         Assert.Contains(
             Validate(options),
-            result => result.ErrorMessage!.Contains(
-                "must differ",
-                StringComparison.OrdinalIgnoreCase
-            )
+            result =>
+                result.ErrorMessage!.Contains("must differ", StringComparison.OrdinalIgnoreCase)
+        );
+    }
+
+    [Theory]
+    [InlineData("meter-readings")]
+    [InlineData("meter-readings-dlq")]
+    public void Validate_ReadingsPersistedTopicCollidesWithAnother_IsRejected(string topic)
+    {
+        // Announcing on either topic feeds the completion signal back in as a reading.
+        var options = Valid();
+        options.ReadingsPersistedTopic = topic;
+
+        Assert.Contains(
+            Validate(options),
+            result =>
+                result.ErrorMessage!.Contains("must differ", StringComparison.OrdinalIgnoreCase)
         );
     }
 
@@ -81,6 +95,7 @@ public sealed class KafkaOptionsTests
             BootstrapServers = "localhost:9092",
             MeterReadingsTopic = "meter-readings",
             DeadLetterTopic = "meter-readings-dlq",
+            ReadingsPersistedTopic = "meter-readings-persisted",
             ConsumerGroupId = "data-processor",
         };
 
