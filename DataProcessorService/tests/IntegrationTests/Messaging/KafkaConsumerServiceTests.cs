@@ -16,6 +16,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System.Text;
+using System.Text.Json;
 
 /// <summary>
 /// Drives the consumer against a real broker and a real database.
@@ -52,12 +53,15 @@ public sealed class KafkaConsumerServiceTests(PostgresFixture postgres, KafkaFix
         await RunConsumerUntilAsync(topic, () => CountReadingsAsync(3));
 
         await using var context = postgres.CreateContext();
-        Assert.Equal(3, await context.MeterReadings.CountAsync(TestContext.Current.CancellationToken));
+        Assert.Equal(
+            3,
+            await context.MeterReadings.CountAsync(TestContext.Current.CancellationToken)
+        );
         Assert.Equal(3, await context.Sensors.CountAsync(TestContext.Current.CancellationToken));
 
-        var energy = await context.Set<EnergyReading>().SingleAsync(
-            TestContext.Current.CancellationToken
-        );
+        var energy = await context
+            .Set<EnergyReading>()
+            .SingleAsync(TestContext.Current.CancellationToken);
         Assert.Equal(12.5, energy.EnergyKwh);
     }
 
@@ -78,7 +82,101 @@ public sealed class KafkaConsumerServiceTests(PostgresFixture postgres, KafkaFix
         await RunConsumerUntilAsync(topic, () => CountReadingsAsync(1), groupId: NewGroup());
 
         await using var context = postgres.CreateContext();
-        Assert.Equal(1, await context.MeterReadings.CountAsync(TestContext.Current.CancellationToken));
+        Assert.Equal(
+            1,
+            await context.MeterReadings.CountAsync(TestContext.Current.CancellationToken)
+        );
+    }
+
+    [Fact]
+    public async Task Consume_PersistedBatch_AnnouncesOnceAfterTheRowsAreReadable()
+    {
+        await postgres.ResetAsync();
+        var topic = NewTopic();
+        var persistedTopic = $"{topic}-persisted";
+        var collectedAt = DateTimeOffset.UtcNow;
+        var rowsWereReadable = false;
+
+        await kafka.ProduceAsync(
+            topic,
+            [
+                (
+                    "energy:Kitchen",
+                    Reading("energy", "Kitchen", """{"energy":12.5}""", collectedAt)
+                ),
+                (
+                    "motion:Kitchen",
+                    Reading("motion", "Kitchen", """{"motionDetected":true}""", collectedAt)
+                ),
+                (
+                    "motion:Kitchen",
+                    Reading(
+                        "motion",
+                        "Kitchen",
+                        """{"motionDetected":false}""",
+                        collectedAt.AddMinutes(1)
+                    )
+                ),
+                (
+                    "motion:Garage",
+                    Reading("motion", "Garage", """{"motionDetected":true}""", collectedAt)
+                ),
+            ]
+        );
+
+        await RunConsumerUntilAsync(
+            topic,
+            async () =>
+            {
+                if (kafka.Consume(persistedTopic, count: 1, TimeSpan.FromSeconds(1)).Count == 0)
+                {
+                    return false;
+                }
+
+                // The event exists, so the transaction behind it must already have committed.
+                rowsWereReadable = await CountReadingsAsync(4);
+                return true;
+            }
+        );
+
+        Assert.True(rowsWereReadable);
+
+        // One event for the batch, not one per reading.
+        var announced = kafka.Consume(persistedTopic, count: 2, TimeSpan.FromSeconds(10));
+        var message = Assert.Single(announced);
+
+        var payload = JsonSerializer.Deserialize<ReadingsPersistedMessage>(
+            message.Message.Value,
+            ReadingsPersistedMessage.SerializerOptions
+        );
+
+        Assert.NotNull(payload);
+        Assert.Equal(4, payload.ReadingCount);
+        Assert.Equal(
+            [("Kitchen", "energy"), ("Kitchen", "motion"), ("Garage", "motion")],
+            payload.Sensors.Select(sensor => (sensor.Location, sensor.SensorType))
+        );
+    }
+
+    [Fact]
+    public async Task Consume_Redelivery_AnnouncesNothing()
+    {
+        // A redelivered batch inserts nothing, and announcing it would have every connected client
+        // refetch unchanged data.
+        await postgres.ResetAsync();
+        var topic = NewTopic();
+        var persistedTopic = $"{topic}-persisted";
+
+        await kafka.ProduceAsync(
+            topic,
+            [("energy:Kitchen", Reading("energy", "Kitchen", """{"energy":1.0}"""))]
+        );
+
+        await RunConsumerUntilAsync(topic, () => CountReadingsAsync(1), groupId: NewGroup());
+        await RunConsumerUntilAsync(topic, () => CountReadingsAsync(1), groupId: NewGroup());
+
+        var announced = kafka.Consume(persistedTopic, count: 2, TimeSpan.FromSeconds(15));
+        Assert.Single(announced);
     }
 
     [Fact]
@@ -133,7 +231,10 @@ public sealed class KafkaConsumerServiceTests(PostgresFixture postgres, KafkaFix
 
         // The valid reading still landed, so the poison messages did not block the batch.
         await using var context = postgres.CreateContext();
-        Assert.Equal(1, await context.MeterReadings.CountAsync(TestContext.Current.CancellationToken));
+        Assert.Equal(
+            1,
+            await context.MeterReadings.CountAsync(TestContext.Current.CancellationToken)
+        );
 
         var deadLettered = kafka.Consume(deadLetterTopic, count: 2, TimeSpan.FromSeconds(30));
         Assert.Equal(2, deadLettered.Count);
@@ -175,10 +276,16 @@ public sealed class KafkaConsumerServiceTests(PostgresFixture postgres, KafkaFix
 
     private static string NewGroup() => $"data-processor-{Guid.NewGuid():N}";
 
-    private static byte[] Reading(string type, string name, string payload) =>
+    private static byte[] Reading(
+        string type,
+        string name,
+        string payload,
+        DateTimeOffset? collectedAt = null
+    ) =>
         Encoding.UTF8.GetBytes(
             $$"""
-            {"type":"{{type}}","name":"{{name}}","payload":{{payload}},"collectedAt":"{{DateTimeOffset.UtcNow:O}}"}
+            {"type":"{{type}}","name":"{{name}}","payload":{{payload}},"collectedAt":"{{collectedAt
+                ?? DateTimeOffset.UtcNow:O}}"}
             """
         );
 

@@ -79,11 +79,19 @@ public sealed class KafkaFixture : IAsyncLifetime
 
         while (consumed.Count < count && DateTimeOffset.UtcNow < deadline)
         {
-            var result = consumer.Consume(TimeSpan.FromMilliseconds(500));
-
-            if (result is not null && !result.IsPartitionEOF)
+            try
             {
-                consumed.Add(result);
+                var result = consumer.Consume(TimeSpan.FromMilliseconds(500));
+
+                if (result is not null && !result.IsPartitionEOF)
+                {
+                    consumed.Add(result);
+                }
+            }
+            catch (ConsumeException ex) when (ex.Error.Code == ErrorCode.UnknownTopicOrPart)
+            {
+                // A topic only exists once something has produced to it, and callers poll for
+                // messages a service under test has not published yet.
             }
         }
 
