@@ -1,0 +1,124 @@
+{
+  "uid": "notification-service-overview",
+  "title": "Notification Service - Overview",
+  "tags": ["notification", "kafka", "signalr"],
+  "timezone": "utc",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "15s",
+  "time": { "from": "now-1h", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "Connected clients",
+      "description": "Browsers currently holding a hub connection, by transport. From ASP.NET Core's own SignalR instrumentation.",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "fieldConfig": {
+        "defaults": { "unit": "short", "custom": { "fillOpacity": 10 } },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(signalr_server_active_connections{job=\"notification-service\"}) by (signalr_transport)",
+          "legendFormat": "{{signalr_transport}}"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "Push latency (p95)",
+      "description": "Seconds between DataProcessorService committing a batch and this service broadcasting the signal for it.",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "fieldConfig": {
+        "defaults": { "unit": "s", "custom": { "fillOpacity": 10 } },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "histogram_quantile(0.95, sum(rate(notification_kafka_consumer_lag_seconds_bucket[5m])) by (le))",
+          "legendFormat": "p95 lag"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "timeseries",
+      "title": "Events consumed vs pushed",
+      "description": "A gap between the two is messages that could not be decoded and were dropped. The two lines should sit on top of each other.",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "fieldConfig": {
+        "defaults": { "unit": "reqps", "custom": { "fillOpacity": 10 } },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(notification_kafka_events_consumed_total[5m]))",
+          "legendFormat": "consumed/s"
+        },
+        {
+          "refId": "B",
+          "expr": "sum(rate(notification_signalr_events_pushed_total[5m]))",
+          "legendFormat": "pushed/s"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "timeseries",
+      "title": "Connection duration (p95)",
+      "description": "How long a hub connection lasts before closing. A collapsing p95 means clients are being dropped and reconnecting.",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "fieldConfig": {
+        "defaults": { "unit": "s", "custom": { "fillOpacity": 10 } },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "histogram_quantile(0.95, sum(rate(signalr_server_connection_duration_seconds_bucket{job=\"notification-service\"}[5m])) by (le))",
+          "legendFormat": "p95 duration"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Connections closed by status",
+      "description": "Anything other than normal_closure is a client losing its connection rather than leaving the page.",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 },
+      "fieldConfig": {
+        "defaults": { "unit": "short", "custom": { "fillOpacity": 10 } },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(signalr_server_connection_duration_seconds_count{job=\"notification-service\"}[5m])) by (signalr_connection_status)",
+          "legendFormat": "{{signalr_connection_status}}"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "GC heap size",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 16 },
+      "fieldConfig": {
+        "defaults": { "unit": "bytes", "custom": { "fillOpacity": 10 } },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(dotnet_gc_last_collection_heap_size_bytes{job=\"notification-service\"})",
+          "legendFormat": "heap"
+        }
+      ]
+    }
+  ]
+}

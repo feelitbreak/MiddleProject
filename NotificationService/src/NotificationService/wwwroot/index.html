@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>NotificationService — hub monitor</title>
+  <style>
+    :root { color-scheme: light dark; }
+    body {
+      font: 14px/1.5 ui-sans-serif, system-ui, sans-serif;
+      margin: 0 auto; padding: 24px 16px; max-width: 860px;
+    }
+    h1 { font-size: 18px; margin: 0 0 4px; }
+    p.sub { margin: 0 0 20px; opacity: .7; }
+    #state { font-weight: 600; }
+    #state[data-state="connected"] { color: #17803d; }
+    #state[data-state="connecting"] { color: #a16207; }
+    #state[data-state="disconnected"] { color: #b91c1c; }
+    #events { list-style: none; margin: 0; padding: 0; }
+    #events li { border-top: 1px solid color-mix(in srgb, currentColor 18%, transparent); padding: 10px 0; }
+    .meta { display: flex; gap: 12px; flex-wrap: wrap; }
+    .at { font-variant-numeric: tabular-nums; opacity: .7; }
+    .sensors { margin-top: 6px; display: flex; gap: 6px; flex-wrap: wrap; }
+    .sensor {
+      border: 1px solid color-mix(in srgb, currentColor 25%, transparent);
+      border-radius: 999px; padding: 1px 8px; font-size: 12px;
+    }
+    .empty { opacity: .6; padding: 10px 0; }
+  </style>
+</head>
+<body>
+  <h1>NotificationService — hub monitor</h1>
+  <p class="sub">
+    Development-only page. Connects to <code>/hubs/readings</code> and lists every
+    <code>readingsChanged</code> event as it arrives. A real client refetches the GraphQL gateway
+    when one of these lands.
+  </p>
+  <p>Connection: <span id="state" data-state="connecting">connecting…</span></p>
+  <ul id="events"></ul>
+  <p class="empty" id="empty">Waiting for the first event. The injector publishes one per committed batch.</p>
+
+  <script src="https://cdn.jsdelivr.net/npm/@microsoft/signalr@9.0.6/dist/browser/signalr.min.js"></script>
+  <script>
+    const state = document.getElementById("state");
+    const events = document.getElementById("events");
+    const empty = document.getElementById("empty");
+
+    const setState = (value, text) => {
+      state.dataset.state = value;
+      state.textContent = text;
+    };
+
+    const connection = new signalR.HubConnectionBuilder()
+      .withUrl("/hubs/readings")
+      .withAutomaticReconnect()
+      .build();
+
+    connection.on("readingsChanged", event => {
+      empty.hidden = true;
+
+      const item = document.createElement("li");
+      const meta = document.createElement("div");
+      meta.className = "meta";
+      meta.innerHTML =
+        `<span class="at">${new Date(event.publishedAt).toLocaleTimeString()}</span>` +
+        `<span><strong>${event.readingCount}</strong> reading(s)</span>` +
+        `<span>newest ${new Date(event.newestCollectedAt).toLocaleTimeString()}</span>`;
+      item.append(meta);
+
+      const sensors = document.createElement("div");
+      sensors.className = "sensors";
+      for (const sensor of event.sensors) {
+        const chip = document.createElement("span");
+        chip.className = "sensor";
+        chip.textContent = `${sensor.location} · ${sensor.sensorType}`;
+        sensors.append(chip);
+      }
+      item.append(sensors);
+
+      events.prepend(item);
+    });
+
+    connection.onreconnecting(() => setState("connecting", "reconnecting…"));
+    connection.onreconnected(() => setState("connected", "connected"));
+    connection.onclose(() => setState("disconnected", "disconnected"));
+
+    connection.start()
+      .then(() => setState("connected", "connected"))
+      .catch(error => setState("disconnected", `failed: ${error}`));
+  </script>
+</body>
+</html>
