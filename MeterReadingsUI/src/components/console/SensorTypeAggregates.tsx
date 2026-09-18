@@ -30,29 +30,29 @@ export default function SensorTypeAggregates({ rows }: SensorTypeAggregatesProps
   const lostCount = rows.filter((r) => r.worst === 'lost').length;
 
   return (
-    <Window title="AGGREGATE &mdash; BY SENSOR TYPE" className="a-types">
-      <div className="trow aq">
-        <span className="n">
-          AIR_QUALITY <span>avg ppm</span>
+    <Window title="AGGREGATE &mdash; BY SENSOR TYPE">
+      <div className="type-card type-card-air">
+        <span className="type-name">
+          AIR_QUALITY <span className="type-unit">avg ppm</span>
         </span>
-        <span className="v num">{avgCo2 === null ? '--' : Math.round(avgCo2)}</span>
-        <span className="m">{air.length} SENSORS REPORTING</span>
+        <span className="type-value tabular">{avgCo2 === null ? '--' : Math.round(avgCo2)}</span>
+        <span className="type-meta">{air.length} SENSORS REPORTING</span>
       </div>
-      <div className="trow mo">
-        <span className="n">
-          MOTION <span>fraction</span>
+      <div className="type-card type-card-motion">
+        <span className="type-name">
+          MOTION <span className="type-unit">fraction</span>
         </span>
-        <span className="v num">
+        <span className="type-value tabular">
           {motionFraction === null ? '--' : `${Math.round(motionFraction * 100)}%`}
         </span>
-        <span className="m">{motion.length} SENSORS REPORTING</span>
+        <span className="type-meta">{motion.length} SENSORS REPORTING</span>
       </div>
-      <div className="trow en">
-        <span className="n">
-          ENERGY <span>avg kWh</span>
+      <div className="type-card type-card-energy">
+        <span className="type-name">
+          ENERGY <span className="type-unit">avg kWh</span>
         </span>
-        <span className="v num">{avgKwh === null ? '--' : Math.round(avgKwh)}</span>
-        <span className="m">
+        <span className="type-value tabular">{avgKwh === null ? '--' : Math.round(avgKwh)}</span>
+        <span className="type-meta">
           {energy.length} SENSORS REPORTING{lostCount > 0 ? ` · ${lostCount} LOCATION LOST` : ''}
         </span>
       </div>

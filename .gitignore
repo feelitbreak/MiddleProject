@@ -1,3 +1,5 @@
 .vs/
 obj/
 bin/
+# Impeccable design-session artefacts, not part of the build
+.impeccable/

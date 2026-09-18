@@ -112,18 +112,38 @@ and only ever lands on data.
 | Blush  | Out of band, lost, error                                    |
 | Lilac  | Reserved: what the viewer has filtered to, and nothing else |
 
-Type is [Handjet](https://fonts.google.com/specimen/Handjet) throughout. Every size runs larger
-than a normal UI face because it is narrow; nothing sits below 12px.
+Type is [Handjet](https://fonts.google.com/specimen/Handjet) throughout, self-hosted as a 7.6 kB
+latin subset in [`public/fonts`](public/fonts) under the SIL Open Font License. Loading it from
+Google Fonts cost a render-blocking stylesheet plus a chained request to a second origin, which was
+the largest single contributor to first contentful paint. Every size runs larger than a normal UI
+face because Handjet is narrow; nothing sits below 12px.
+
+Class names describe what they mark rather than abbreviating it: `.filter-label`, `.window-titlebar`,
+`.feed-chip-stale`. The stylesheet is the only place layout lives, and every grid track is a
+fraction or a fixed size -- an `auto` track spanned by a scrolling panel resolves to that panel's
+full content height, which is what once made this page taller than the viewport after a refetch.
 
 Charts are hand-drawn SVG rather than a library: the design needs mitred steps, square markers and
 a hard outline, which is most of a charting library's defaults overridden anyway.
 
 ## Configuration
 
-**None.** nginx proxies `/graphql` to `graphql_gateway:8080` and `/hubs` to
-`notification_service:8080`, and `vite.config.ts` mirrors those two rules for development. The app
-only ever uses relative paths, so no back-end host is baked into the bundle and the browser makes
-no cross-origin request. Changing a back-end address is an [`nginx.conf`](nginx.conf) edit.
+`.env` holds the development configuration; copy [`.env.example`](.env.example) to start.
+
+| Variable               | Read by               | Default                 |
+| ---------------------- | --------------------- | ----------------------- |
+| `VITE_GRAPHQL_URL`     | the browser           | `/graphql`              |
+| `VITE_HUB_URL`         | the browser           | `/hubs/readings`        |
+| `GRAPHQL_PROXY_TARGET` | `vite.config.ts` only | `http://localhost:8086` |
+| `HUB_PROXY_TARGET`     | `vite.config.ts` only | `http://localhost:8088` |
+
+The two `VITE_` values default to same-origin paths, which the dev proxy and nginx both forward, so
+there is no CORS and no back-end host in the bundle. The two targets are where the dev server
+forwards them; they carry no prefix, so they never reach client code.
+
+**Vite inlines `VITE_` values at build time**, so the image cannot be repointed without rebuilding.
+For the container, change [`nginx.conf`](nginx.conf) instead -- it proxies `/graphql` to
+`graphql_gateway:8080` and `/hubs` to `notification_service:8080`.
 
 ## Running locally
 
@@ -150,16 +170,31 @@ Reads `../GraphQLGatewayService/src/Api/schema.graphql`, so it works offline. Co
 CI runs the same command and fails on a diff, which is what turns a gateway schema change into a
 compile error here rather than a runtime surprise.
 
+## Testing
+
+Jest with ts-jest, jsdom and Testing Library. Tests sit beside what they cover as
+`Name.test.ts(x)`. Coverage is always collected because SonarQube reads `coverage/lcov.info`; open
+`coverage/lcov-report/index.html` to browse it.
+
+The domain layer is pure functions with no React, so `thresholds`, `freshness` and `locations` test
+without a renderer.
+
+```bash
+npm test
+npm run test:watch
+```
+
 ### Verifying a change
 
 ```bash
-npm run format:check && npm run lint && npm run typecheck && npm run build
+npm run format:check && npm run lint && npm run typecheck && npm test && npm run build
 ```
 
 ## CI/CD
 
 [`../.github/workflows/meter-readings-ui.yaml`](../.github/workflows/meter-readings-ui.yaml)
-installs, checks formatting, lints, typechecks, builds, and verifies the committed types still
-match the gateway schema. On `main` it pushes `feelitbreak/middle_project:meter-readings-ui` to
-Docker Hub, which watchtower then rolls out. It also runs when the gateway's schema changes, since
-that is the other thing that can break this build.
+installs, checks formatting, lints, typechecks, tests, builds, verifies the committed types still
+match the gateway schema, and runs a SonarQube scan over `coverage/lcov.info`. On `main` it pushes
+`feelitbreak/middle_project:meter-readings-ui` to Docker Hub, which watchtower then rolls out. It
+also runs when the gateway's schema changes, since that is the other thing that can break this
+build.

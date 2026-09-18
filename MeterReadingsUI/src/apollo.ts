@@ -1,14 +1,9 @@
 import { ApolloClient, HttpLink, InMemoryCache } from '@apollo/client';
 import { relayStylePagination } from '@apollo/client/utilities';
-
-/**
- * Relative path on purpose: Vite proxies it in development and nginx proxies it in the image, so no
- * gateway host is baked into the bundle and the browser never makes a cross-origin request.
- */
-const GRAPHQL_PATH = '/graphql';
+import { GRAPHQL_URL } from './config';
 
 export const apolloClient = new ApolloClient({
-  link: new HttpLink({ uri: GRAPHQL_PATH }),
+  link: new HttpLink({ uri: GRAPHQL_URL }),
   cache: new InMemoryCache({
     typePolicies: {
       Query: {

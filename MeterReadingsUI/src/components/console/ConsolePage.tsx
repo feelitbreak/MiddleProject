@@ -43,12 +43,15 @@ export default function ConsolePage({ controls, live }: ConsolePageProps) {
 
   return (
     <main className="console">
-      <FilterPanel controls={controls} locations={locations} />
-
-      <SensorTypeAggregates rows={visible} />
+      {/* Filter and type cards share one column so neither sits in a grid track that a scrolling
+          panel spans; an auto track would otherwise grow to the table's full height. */}
+      <div className="console-side">
+        <FilterPanel controls={controls} locations={locations} />
+        <SensorTypeAggregates rows={visible} />
+      </div>
 
       {latest.error ? (
-        <Window title="LATEST VALUES" tone="hot" className="a-latest">
+        <Window title="LATEST VALUES" tone="error" className="area-latest">
           <ErrorPanel error={latest.error} onRetry={retryLatest} />
         </Window>
       ) : (

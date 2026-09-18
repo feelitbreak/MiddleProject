@@ -12,12 +12,18 @@ interface FilterPanelProps {
   onPageSize?: (size: number) => void;
 }
 
+const PAGE_SIZES = [25, 50, 100];
+
 /** Datetime-local wants `YYYY-MM-DDTHH:mm`; the gateway wants ISO with an offset. */
 function toLocalInput(iso: string | null): string {
   if (iso === null) return '';
   const date = new Date(iso);
   const pad = (n: number) => String(n).padStart(2, '0');
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+function inputClass(isActive: boolean): string {
+  return isActive ? 'filter-input filter-input-active' : 'filter-input';
 }
 
 export default function FilterPanel({
@@ -30,11 +36,11 @@ export default function FilterPanel({
   const { filter, set, clear, active } = controls;
 
   return (
-    <Window title="FILTER" tone="filter" className="a-filter">
-      <div className="fgrid">
-        <label className="fl">
-          <span className="k">LOCATION</span>
-          <span className={filter.location ? 'inp on' : 'inp'}>
+    <Window title="FILTER" tone="filter">
+      <div className="filter-grid">
+        <label className="filter-row">
+          <span className="filter-label">LOCATION</span>
+          <span className={inputClass(filter.location !== null)}>
             <select
               value={filter.location ?? ''}
               onChange={(e) => set('location', e.target.value === '' ? null : e.target.value)}
@@ -49,9 +55,9 @@ export default function FilterPanel({
           </span>
         </label>
 
-        <label className="fl">
-          <span className="k">TYPE</span>
-          <span className={filter.sensorType ? 'inp on' : 'inp'}>
+        <label className="filter-row">
+          <span className="filter-label">TYPE</span>
+          <span className={inputClass(filter.sensorType !== null)}>
             <select
               value={filter.sensorType ?? ''}
               onChange={(e) =>
@@ -68,9 +74,9 @@ export default function FilterPanel({
           </span>
         </label>
 
-        <label className="fl">
-          <span className="k">FROM</span>
-          <span className="inp">
+        <label className="filter-row">
+          <span className="filter-label">FROM</span>
+          <span className="filter-input">
             <input
               type="datetime-local"
               value={toLocalInput(filter.from)}
@@ -81,12 +87,11 @@ export default function FilterPanel({
           </span>
         </label>
 
-        <label className="fl">
-          <span className="k">TO</span>
-          <span className={filter.to ? 'inp on' : 'inp'}>
+        <label className="filter-row">
+          <span className="filter-label">TO</span>
+          <span className={inputClass(filter.to !== null)}>
             <input
               type="datetime-local"
-              placeholder="NOW"
               value={toLocalInput(filter.to)}
               onChange={(e) =>
                 set('to', e.target.value === '' ? null : new Date(e.target.value).toISOString())
@@ -95,9 +100,9 @@ export default function FilterPanel({
           </span>
         </label>
 
-        <label className="fl">
-          <span className="k">SEARCH</span>
-          <span className={filter.search ? 'inp on' : 'inp'}>
+        <label className="filter-row">
+          <span className="filter-label">SEARCH</span>
+          <span className={inputClass(filter.search !== '')}>
             <input
               type="search"
               value={filter.search}
@@ -107,9 +112,9 @@ export default function FilterPanel({
           </span>
         </label>
 
-        <label className="fl">
-          <span className="k">METRIC</span>
-          <span className="inp on">
+        <label className="filter-row">
+          <span className="filter-label">METRIC</span>
+          <span className="filter-input filter-input-active">
             <select
               value={filter.metric}
               onChange={(e) => set('metric', e.target.value as ReadingMetric)}
@@ -124,11 +129,11 @@ export default function FilterPanel({
         </label>
 
         {showPageSize && onPageSize && (
-          <label className="fl">
-            <span className="k">PAGE SIZE</span>
-            <span className="inp">
+          <label className="filter-row">
+            <span className="filter-label">PAGE SIZE</span>
+            <span className="filter-input">
               <select value={pageSize} onChange={(e) => onPageSize(Number(e.target.value))}>
-                {[25, 50, 100].map((size) => (
+                {PAGE_SIZES.map((size) => (
                   <option key={size} value={size}>
                     {size}
                   </option>
@@ -138,31 +143,33 @@ export default function FilterPanel({
           </label>
         )}
 
-        <div className="segs" role="group" aria-label="Aggregation interval">
+        <div className="segmented" role="group" aria-label="Aggregation interval">
           {INTERVALS.map((interval) => (
-            <b
+            <button
+              type="button"
               key={interval}
-              className={filter.interval === interval ? 'on' : undefined}
-              role="button"
-              tabIndex={0}
+              className={
+                filter.interval === interval
+                  ? 'segmented-option segmented-option-active'
+                  : 'segmented-option'
+              }
+              aria-pressed={filter.interval === interval}
               onClick={() => set('interval', interval)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') set('interval', interval);
-              }}
             >
               {interval}
-            </b>
+            </button>
           ))}
         </div>
       </div>
 
       {active.length > 0 && (
-        <div className="chips">
+        <div className="filter-chips">
           {active.map((chip) => (
-            <span key={chip.key} className="chip">
+            <span key={chip.key} className="filter-chip">
               {chip.label}
               <button
                 type="button"
+                className="filter-chip-remove"
                 aria-label={`Remove ${chip.label}`}
                 onClick={() => set(chip.key, (chip.key === 'search' ? '' : null) as never)}
               >
@@ -174,10 +181,10 @@ export default function FilterPanel({
       )}
 
       <div className="pager">
-        <span className="c">
+        <span className="pager-note">
           {active.length === 0 ? 'NO FILTER APPLIED' : `${active.length} FILTERS ACTIVE`}
         </span>
-        <button type="button" className="btn ghost" onClick={clear}>
+        <button type="button" className="button button-ghost" onClick={clear}>
           CLEAR ALL
         </button>
       </div>

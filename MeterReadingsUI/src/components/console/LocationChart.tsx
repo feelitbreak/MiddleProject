@@ -2,7 +2,7 @@ import { useQuery } from '@apollo/client';
 import { useMemo } from 'react';
 import Window from '../shared/Window';
 import SteppedChart, { ChartLegend, type ChartSeries } from '../shared/SteppedChart';
-import { LoadBar } from '../shared/Indicators';
+import { RefreshBar } from '../shared/Indicators';
 import { EmptyPanel, ErrorPanel } from '../shared/StatePanels';
 import { READING_AGGREGATES } from '../../graphql/documents';
 import { chartThreshold, METRICS, seriesColour } from '../../domain/metrics';
@@ -65,11 +65,11 @@ export default function LocationChart({ metric, interval, where }: LocationChart
   return (
     <Window
       title="AGGREGATE &mdash; BY LOCATION"
-      className="a-aggr"
-      tone={error ? 'hot' : 'default'}
+      className="area-aggregate"
+      tone={error ? 'error' : 'default'}
       query={query}
     >
-      {loading && aggregates.length > 0 && <LoadBar />}
+      {loading && aggregates.length > 0 && <RefreshBar />}
       {error ? (
         <ErrorPanel error={error} onRetry={() => void refetch()} />
       ) : aggregates.length === 0 ? (
@@ -83,7 +83,7 @@ export default function LocationChart({ metric, interval, where }: LocationChart
         )
       ) : (
         <>
-          <div className="plot">
+          <div className="chart-area">
             <SteppedChart
               series={series}
               ticks={ticks}

@@ -8,12 +8,18 @@ const FEED_WORD: Record<FeedState, string> = {
   lost: 'LOST',
 };
 
+const FEED_CLASS: Record<FeedState, string> = {
+  live: 'feed-chip-live',
+  stale: 'feed-chip-stale',
+  lost: 'feed-chip-lost',
+};
+
 /** Feed age. Carries its word as well as its fill, so colour is never the only signal. */
 export function FeedChip({ state, age }: { state: FeedState; age: string }) {
   return (
-    <span className={`feed ${state}`}>
-      <b>{FEED_WORD[state]}</b>
-      <span className="n num">{age}</span>
+    <span className={`feed-chip ${FEED_CLASS[state]}`}>
+      <b className="feed-chip-word">{FEED_WORD[state]}</b>
+      <span className="feed-chip-age tabular">{age}</span>
     </span>
   );
 }
@@ -26,15 +32,16 @@ export function BandChip({
   breaches: Breach[];
   hasThreshold: boolean;
 }) {
-  if (!hasThreshold) return <span className="na">&mdash;</span>;
-  if (breaches.length === 0) return <span className="tag o">IN BAND</span>;
+  if (!hasThreshold) return <span className="no-value">&mdash;</span>;
+
   const first = breaches[0];
-  if (!first) return <span className="tag o">IN BAND</span>;
+  if (first === undefined) return <span className="band-chip band-chip-ok">IN BAND</span>;
+
   return (
-    <span className="tag h">
+    <span className="band-chip band-chip-breached">
       {first.label}
-      <small>{first.limit}</small>
-      {breaches.length > 1 && <small>+{breaches.length - 1}</small>}
+      <small className="band-chip-limit">{first.limit}</small>
+      {breaches.length > 1 && <small className="band-chip-limit">+{breaches.length - 1}</small>}
     </span>
   );
 }
@@ -46,30 +53,30 @@ export function BandChip({
 export function ThresholdStrip() {
   const { co2Ppm, pm25, humidityPercent } = ALERT_THRESHOLDS;
   return (
-    <div className="bands">
+    <div className="threshold-strip">
       ALERT THRESHOLDS &mdash; OURS, NOT THE GATEWAY&apos;S &mdash;
       <span>
-        CO2 <b>&gt;{co2Ppm.max} PPM</b>
+        CO2 <b className="threshold-value">&gt;{co2Ppm.max} PPM</b>
       </span>
       <span>
-        PM2.5 <b>&gt;{pm25.max} UG/M3</b>
+        PM2.5 <b className="threshold-value">&gt;{pm25.max} UG/M3</b>
       </span>
       <span>
         RH{' '}
-        <b>
+        <b className="threshold-value">
           OUTSIDE {humidityPercent.min}-{humidityPercent.max}%
         </b>
       </span>
-      <span style={{ marginLeft: 'auto' }}>ENERGY AND MOTION HAVE NO THRESHOLD</span>
+      <span className="threshold-note">ENERGY AND MOTION HAVE NO THRESHOLD</span>
     </div>
   );
 }
 
 /** Refetching never blanks a panel; only this strip moves. */
-export function LoadBar() {
+export function RefreshBar() {
   return (
-    <div className="loadbar" role="status" aria-label="Refreshing">
-      <i />
+    <div className="refresh-bar" role="status" aria-label="Refreshing">
+      <i className="refresh-bar-fill" />
     </div>
   );
 }

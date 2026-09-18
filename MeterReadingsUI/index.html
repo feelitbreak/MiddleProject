@@ -8,12 +8,9 @@
       name="description"
       content="Live console over the building's air quality, motion and energy sensors."
     />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Handjet:wght@100..900&display=swap"
-      rel="stylesheet"
-    />
+    <!-- Self-hosted, so there is no render-blocking stylesheet and no second origin to resolve.
+         Preloaded because the @font-face lives in the CSS bundle, one hop later. -->
+    <link rel="preload" href="/fonts/handjet-latin.woff2" as="font" type="font/woff2" crossorigin />
   </head>
   <body>
     <div id="root"></div>

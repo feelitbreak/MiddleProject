@@ -12,6 +12,11 @@ dist
 dist-ssr
 *.local
 
+# Local configuration; .env.example is the committed template.
+.env
+.env.*
+!.env.example
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
@@ -23,5 +28,4 @@ dist-ssr
 *.sln
 *.sw?
 
-# build output and generated types are rebuilt by `npm run build` / `npm run codegen`
 coverage

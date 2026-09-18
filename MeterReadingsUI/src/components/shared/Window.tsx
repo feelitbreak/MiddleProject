@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 
-type Tone = 'default' | 'filter' | 'warn' | 'hot';
+type Tone = 'default' | 'filter' | 'warning' | 'error';
 
 interface WindowProps {
   title: string;
@@ -13,9 +13,9 @@ interface WindowProps {
 
 const TONE_CLASS: Record<Tone, string> = {
   default: '',
-  filter: ' alt',
-  warn: ' warn',
-  hot: ' hot',
+  filter: ' window-titlebar-filter',
+  warning: ' window-titlebar-warning',
+  error: ' window-titlebar-error',
 };
 
 export default function Window({
@@ -26,15 +26,15 @@ export default function Window({
   children,
 }: WindowProps) {
   return (
-    <section className={className ? `win ${className}` : 'win'}>
-      <div className={`tb${TONE_CLASS[tone]}`}>
-        <span className="box" aria-hidden="true" />
-        <span className="t">{title}</span>
-        <span className="lines" aria-hidden="true" />
+    <section className={className ? `window ${className}` : 'window'}>
+      <div className={`window-titlebar${TONE_CLASS[tone]}`}>
+        <span className="window-button" aria-hidden="true" />
+        <span className="window-title">{title}</span>
+        <span className="titlebar-lines" aria-hidden="true" />
       </div>
-      <div className="wb">
+      <div className="window-body">
         {query !== undefined && (
-          <div className="q" title={query}>
+          <div className="query-line" title={query}>
             {query}
           </div>
         )}

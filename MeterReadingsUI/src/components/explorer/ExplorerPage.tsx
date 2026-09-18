@@ -2,7 +2,7 @@ import { useQuery } from '@apollo/client';
 import { useCallback, useMemo, useState } from 'react';
 import Window from '../shared/Window';
 import FilterPanel from '../shared/FilterPanel';
-import { LoadBar, ThresholdStrip } from '../shared/Indicators';
+import { RefreshBar, ThresholdStrip } from '../shared/Indicators';
 import { EmptyPanel, ErrorPanel } from '../shared/StatePanels';
 import { CATALOGUE, READINGS_PAGE } from '../../graphql/documents';
 import { formatClock, formatDay } from '../../domain/freshness';
@@ -14,8 +14,8 @@ interface ExplorerPageProps {
 }
 
 function numberCell(value: number | null, breached: boolean, digits = 0) {
-  if (value === null) return <td className="na">&mdash;</td>;
-  return <td className={breached ? 'num hot' : 'num'}>{value.toFixed(digits)}</td>;
+  if (value === null) return <td className="no-value">&mdash;</td>;
+  return <td className={breached ? 'tabular out-of-band' : 'tabular'}>{value.toFixed(digits)}</td>;
 }
 
 export default function ExplorerPage({ controls }: ExplorerPageProps) {
@@ -40,50 +40,61 @@ export default function ExplorerPage({ controls }: ExplorerPageProps) {
   const singleLocation = filter.location !== null;
   const newest = nodes[0]?.collectedAt ?? null;
   const oldest = nodes.length > 0 ? (nodes[nodes.length - 1]?.collectedAt ?? null) : null;
+  const hasNextPage = pageInfo?.hasNextPage === true;
 
   return (
     <main className="explorer">
-      <FilterPanel
-        controls={controls}
-        locations={catalogue.data?.locations ?? []}
-        showPageSize
-        pageSize={pageSize}
-        onPageSize={setPageSize}
-      />
+      <div className="explorer-side">
+        <FilterPanel
+          controls={controls}
+          locations={catalogue.data?.locations ?? []}
+          showPageSize
+          pageSize={pageSize}
+          onPageSize={setPageSize}
+        />
 
-      <Window title="MATCHING SET" className="a-summary">
-        <div className="sum">
-          <span className="k">TOTAL COUNT</span>
-          <span className="v num">{connection?.totalCount.toLocaleString() ?? '--'}</span>
-          <span className="m">READINGS MATCH THIS FILTER</span>
-        </div>
-        <div className="sum">
-          <span className="k">NEWEST</span>
-          <span className="v num">{newest === null ? '--' : formatClock(newest)}</span>
-          <span className="m">{newest === null ? 'NOTHING LOADED' : formatDay(newest)}</span>
-        </div>
-        <div className="sum" style={{ borderBottom: 0 }}>
-          <span className="k">OLDEST LOADED</span>
-          <span className="v num">{oldest === null ? '--' : formatClock(oldest)}</span>
-          <span className="m">{nodes.length} ROWS ON SCREEN</span>
-        </div>
-      </Window>
+        <Window title="MATCHING SET">
+          <div className="summary-item">
+            <span className="summary-label">TOTAL COUNT</span>
+            <span className="summary-value tabular">
+              {connection?.totalCount.toLocaleString() ?? '--'}
+            </span>
+            <span className="summary-meta">READINGS MATCH THIS FILTER</span>
+          </div>
+          <div className="summary-item">
+            <span className="summary-label">NEWEST</span>
+            <span className="summary-value tabular">
+              {newest === null ? '--' : formatClock(newest)}
+            </span>
+            <span className="summary-meta">
+              {newest === null ? 'NOTHING LOADED' : formatDay(newest)}
+            </span>
+          </div>
+          <div className="summary-item">
+            <span className="summary-label">OLDEST LOADED</span>
+            <span className="summary-value tabular">
+              {oldest === null ? '--' : formatClock(oldest)}
+            </span>
+            <span className="summary-meta">{nodes.length} ROWS ON SCREEN</span>
+          </div>
+        </Window>
+      </div>
 
       <Window
         title="READINGS"
-        className="a-readings"
-        tone={error ? 'hot' : 'default'}
+        className="area-readings"
+        tone={error ? 'error' : 'default'}
         query={`readings(first: ${pageSize}${pageInfo?.endCursor ? `, after: "${pageInfo.endCursor.slice(0, 24)}…"` : ''})`}
       >
         {singleLocation && (
-          <div className="scope">
+          <div className="scope-banner">
             {filter.location?.toUpperCase()}
-            {filter.sensorType && <span>&middot;</span>}
+            {filter.sensorType && <span className="scope-separator">&middot;</span>}
             {filter.sensorType}
-            <em>columns collapsed &mdash; one location filtered</em>
+            <em className="scope-note">columns collapsed &mdash; one location filtered</em>
           </div>
         )}
-        {loading && nodes.length > 0 && <LoadBar />}
+        {loading && nodes.length > 0 && <RefreshBar />}
         <ThresholdStrip />
 
         {error ? (
@@ -100,7 +111,7 @@ export default function ExplorerPage({ controls }: ExplorerPageProps) {
             />
           )
         ) : (
-          <div className="scrolls">
+          <div className="scroll-area">
             <table>
               <thead>
                 <tr>
@@ -108,19 +119,19 @@ export default function ExplorerPage({ controls }: ExplorerPageProps) {
                   {!singleLocation && <th>LOCATION</th>}
                   {!singleLocation && <th>TYPE</th>}
                   <th>
-                    CO2<i>PPM</i>
+                    CO2<i className="column-unit">PPM</i>
                   </th>
                   <th>
-                    PM2.5<i>UG/M3</i>
+                    PM2.5<i className="column-unit">UG/M3</i>
                   </th>
                   <th>
-                    RH<i>%</i>
+                    RH<i className="column-unit">%</i>
                   </th>
                   <th>
-                    MOTION<i>STATE</i>
+                    MOTION<i className="column-unit">STATE</i>
                   </th>
                   <th>
-                    ENERGY<i>KWH</i>
+                    ENERGY<i className="column-unit">KWH</i>
                   </th>
                   <th>ID</th>
                 </tr>
@@ -128,26 +139,24 @@ export default function ExplorerPage({ controls }: ExplorerPageProps) {
               <tbody>
                 {nodes.map((reading) => (
                   <tr key={reading.id}>
-                    <td className="when">
+                    <td className="timestamp-cell">
                       {formatClock(reading.collectedAt)}
-                      <i>{formatDay(reading.collectedAt)}</i>
+                      <i className="timestamp-date">{formatDay(reading.collectedAt)}</i>
                     </td>
                     {!singleLocation && (
-                      <td className="loc">{reading.sensor.name.toUpperCase()}</td>
+                      <td className="location-cell">{reading.sensor.name.toUpperCase()}</td>
                     )}
-                    {!singleLocation && <td className="loc">{reading.sensor.type}</td>}
+                    {!singleLocation && <td className="location-cell">{reading.sensor.type}</td>}
                     {numberCell(reading.co2, isBreached('co2', reading.co2))}
                     {numberCell(reading.pm25, isBreached('pm25', reading.pm25))}
                     {numberCell(reading.humidity, isBreached('humidity', reading.humidity))}
                     {reading.motionDetected === null ? (
-                      <td className="na">&mdash;</td>
+                      <td className="no-value">&mdash;</td>
                     ) : (
                       <td>{reading.motionDetected ? 'YES' : 'NO'}</td>
                     )}
                     {numberCell(reading.energyKwh, false, 1)}
-                    <td className="num" style={{ fontSize: '16px', color: 'var(--ink-soft)' }}>
-                      {reading.id}
-                    </td>
+                    <td className="tabular row-id">{reading.id}</td>
                   </tr>
                 ))}
               </tbody>
@@ -156,16 +165,16 @@ export default function ExplorerPage({ controls }: ExplorerPageProps) {
         )}
 
         <div className="pager">
-          <span className="c">
+          <span className="pager-note">
             SHOWING {nodes.length} OF {connection?.totalCount.toLocaleString() ?? '--'} &middot;
             ORDER NEWEST FIRST (FIXED SERVER-SIDE)
           </span>
           <button
             type="button"
-            className="btn"
+            className="button"
             onClick={loadMore}
-            disabled={pageInfo?.hasNextPage !== true || loading}
-            aria-disabled={pageInfo?.hasNextPage !== true || loading}
+            disabled={!hasNextPage || loading}
+            aria-disabled={!hasNextPage || loading}
           >
             LOAD {pageSize} MORE &#9656;
           </button>

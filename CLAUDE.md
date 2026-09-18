@@ -88,7 +88,9 @@ preference for platform and library built-ins over bespoke utilities.
 - One filter object drives every panel. No state library: Apollo's cache and one `useState` cover it.
 - Alert thresholds are the UI's own invention and live in one file; any surface that judges a value
   prints the number it used.
-- Verify with `npm run format:check && npm run lint && npm run typecheck && npm run build`.
+- Verify with `npm run format:check && npm run lint && npm run typecheck && npm test && npm run build`.
+- Class names describe what they mark (`.filter-label`, not `.k`). Every grid track is a fraction
+  or a fixed size: an `auto` track spanned by a scrolling panel grows to its full content height.
 
 ## Local stack
 

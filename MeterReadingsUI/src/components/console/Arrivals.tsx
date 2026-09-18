@@ -22,43 +22,45 @@ export default function Arrivals({ lastEvent, eventsSeen, rows, now }: ArrivalsP
   return (
     <Window
       title="ARRIVALS &middot; readingsChanged"
-      className="a-arrivals"
+      className="area-arrivals"
       query={
         lastEvent === null
           ? 'waiting for the first event…'
           : `${lastEvent.readingCount} rows · ${lastEvent.sensors.length} sensors · ${formatAge(lastEvent.publishedAt, now)} ago`
       }
     >
-      <div className="scrolls">
+      <div className="scroll-area">
         {lastEvent === null ? (
-          <div className="ar">
-            <span className="w">NO EVENTS YET</span>
-            <span className="tk">HUB IDLE</span>
+          <div className="arrival">
+            <span className="arrival-location">NO EVENTS YET</span>
+            <span className="arrival-age">HUB IDLE</span>
           </div>
         ) : (
           lastEvent.sensors.map((sensor, index) => (
             <div
-              className={index < 2 ? 'ar f' : 'ar'}
+              className={index < 2 ? 'arrival arrival-fresh' : 'arrival'}
               key={`${sensor.location}-${sensor.sensorType}`}
             >
-              <span className="w">{sensor.location.toUpperCase()}</span>
-              <span className="num">{TYPE_LABEL[sensor.sensorType] ?? sensor.sensorType}</span>
-              <span className="tk">{formatAge(lastEvent.publishedAt, now)}</span>
+              <span className="arrival-location">{sensor.location.toUpperCase()}</span>
+              <span className="tabular">{TYPE_LABEL[sensor.sensorType] ?? sensor.sensorType}</span>
+              <span className="arrival-age">{formatAge(lastEvent.publishedAt, now)}</span>
             </div>
           ))
         )}
         {eventsSeen > 0 && (
-          <div className="ar">
-            <span className="w">EVENTS THIS SESSION</span>
-            <span className="num">{eventsSeen}</span>
+          <div className="arrival">
+            <span className="arrival-location">EVENTS THIS SESSION</span>
+            <span className="tabular">{eventsSeen}</span>
           </div>
         )}
       </div>
 
       {lost.map((row) => (
-        <div className="msg err" key={row.location}>
-          <div className="h">&#9632; SIGNAL LOST &middot; {row.location.toUpperCase()}</div>
-          <div className="m">
+        <div className="message message-error" key={row.location}>
+          <div className="message-heading">
+            &#9632; SIGNAL LOST &middot; {row.location.toUpperCase()}
+          </div>
+          <div className="message-body">
             Nothing reported for{' '}
             {row.oldestCollectedAt === null ? 'a while' : formatAge(row.oldestCollectedAt, now)}.
             Showing no value rather than a stale one.

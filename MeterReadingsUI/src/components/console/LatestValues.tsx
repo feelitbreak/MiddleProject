@@ -1,9 +1,9 @@
 import { Link } from 'react-router-dom';
 import Window from '../shared/Window';
-import { BandChip, FeedChip, LoadBar, ThresholdStrip } from '../shared/Indicators';
+import { BandChip, FeedChip, RefreshBar, ThresholdStrip } from '../shared/Indicators';
 import { EmptyPanel } from '../shared/StatePanels';
 import { formatAge } from '../../domain/freshness';
-import { typesPresent, type LocationRow } from '../../domain/locations';
+import { typesPresent, type AirQualitySlot, type LocationRow } from '../../domain/locations';
 import { breachesFor, isBreached } from '../../domain/thresholds';
 
 interface LatestValuesProps {
@@ -15,8 +15,17 @@ interface LatestValuesProps {
 }
 
 function numberCell(value: number | null, breached: boolean, digits = 0) {
-  if (value === null) return <td className="na">&mdash;</td>;
-  return <td className={breached ? 'num hot' : 'num'}>{value.toFixed(digits)}</td>;
+  if (value === null) return <td className="no-value">&mdash;</td>;
+  return <td className={breached ? 'tabular out-of-band' : 'tabular'}>{value.toFixed(digits)}</td>;
+}
+
+/** A lost sensor shows nothing rather than a value that stopped being true. */
+function reporting<T extends { state: string }>(slot: T | null): T | null {
+  return slot !== null && slot.state !== 'lost' ? slot : null;
+}
+
+function metricValueClass(breached: boolean): string {
+  return breached ? 'metric-value tabular out-of-band' : 'metric-value tabular';
 }
 
 export default function LatestValues({
@@ -26,9 +35,14 @@ export default function LatestValues({
   now,
   query,
 }: LatestValuesProps) {
+  const ageOf = (row: LocationRow) =>
+    row.oldestCollectedAt === null ? '--' : formatAge(row.oldestCollectedAt, now);
+
+  const breachesOf = (air: AirQualitySlot | null) => (air === null ? [] : breachesFor(air));
+
   return (
-    <Window title="LATEST VALUES" className="a-latest" query={query}>
-      {refreshing && <LoadBar />}
+    <Window title="LATEST VALUES" className="area-latest" query={query}>
+      {refreshing && <RefreshBar />}
       <ThresholdStrip />
 
       {rows.length === 0 ? (
@@ -38,84 +52,74 @@ export default function LatestValues({
         />
       ) : (
         <>
-          <div className="scrolls wide-only">
+          <div className="scroll-area desktop-only">
             <table>
               <thead>
                 <tr>
                   <th>LOCATION</th>
                   <th>
-                    CO2<i>PPM</i>
+                    CO2<i className="column-unit">PPM</i>
                   </th>
                   <th>
-                    PM2.5<i>UG/M3</i>
+                    PM2.5<i className="column-unit">UG/M3</i>
                   </th>
                   <th>
-                    RH<i>%</i>
+                    RH<i className="column-unit">%</i>
                   </th>
                   <th>
-                    MOTION<i>STATE</i>
+                    MOTION<i className="column-unit">STATE</i>
                   </th>
                   <th>
-                    ENERGY<i>KWH</i>
+                    ENERGY<i className="column-unit">KWH</i>
                   </th>
                   <th>
-                    LAST READ<i>FEED</i>
+                    LAST READ<i className="column-unit">FEED</i>
                   </th>
                   <th>
-                    READING<i>BAND</i>
+                    READING<i className="column-unit">BAND</i>
                   </th>
                 </tr>
               </thead>
               <tbody>
                 {rows.map((row) => {
-                  const air = row.airQuality;
-                  // A lost sensor shows nothing rather than a value that stopped being true.
-                  const airLive = air !== null && air.state !== 'lost';
-                  const motionLive = row.motion !== null && row.motion.state !== 'lost';
-                  const energyLive = row.energy !== null && row.energy.state !== 'lost';
-                  const breaches = airLive && air ? breachesFor(air) : [];
+                  const air = reporting(row.airQuality);
+                  const motion = reporting(row.motion);
+                  const energy = reporting(row.energy);
 
                   return (
                     <tr key={row.location}>
-                      <td className="loc">
+                      <td className="location-cell">
                         {row.location.toUpperCase()}
-                        <i>{typesPresent(row)}</i>
+                        <i className="location-types">{typesPresent(row)}</i>
                       </td>
-                      {airLive && air ? (
+                      {air === null ? (
+                        <>
+                          <td className="no-value">&mdash;</td>
+                          <td className="no-value">&mdash;</td>
+                          <td className="no-value">&mdash;</td>
+                        </>
+                      ) : (
                         <>
                           {numberCell(air.co2, isBreached('co2', air.co2))}
                           {numberCell(air.pm25, isBreached('pm25', air.pm25))}
                           {numberCell(air.humidity, isBreached('humidity', air.humidity))}
                         </>
-                      ) : (
-                        <>
-                          <td className="na">&mdash;</td>
-                          <td className="na">&mdash;</td>
-                          <td className="na">&mdash;</td>
-                        </>
                       )}
-                      {motionLive && row.motion ? (
-                        <td>{row.motion.detected === true ? 'YES' : 'NO'}</td>
+                      {motion === null ? (
+                        <td className="no-value">&mdash;</td>
                       ) : (
-                        <td className="na">&mdash;</td>
+                        <td>{motion.detected === true ? 'YES' : 'NO'}</td>
                       )}
-                      {energyLive && row.energy ? (
-                        numberCell(row.energy.kwh, false, 1)
+                      {energy === null ? (
+                        <td className="no-value">&mdash;</td>
                       ) : (
-                        <td className="na">&mdash;</td>
+                        numberCell(energy.kwh, false, 1)
                       )}
                       <td>
-                        <FeedChip
-                          state={row.worst}
-                          age={
-                            row.oldestCollectedAt === null
-                              ? '--'
-                              : formatAge(row.oldestCollectedAt, now)
-                          }
-                        />
+                        <FeedChip state={row.worst} age={ageOf(row)} />
                       </td>
                       <td>
-                        <BandChip breaches={breaches} hasThreshold={airLive} />
+                        <BandChip breaches={breachesOf(air)} hasThreshold={air !== null} />
                       </td>
                     </tr>
                   );
@@ -125,63 +129,57 @@ export default function LatestValues({
           </div>
 
           {/* Below 720px the six-column table cannot hold display numerals: one card per location. */}
-          <div className="cards scrolls">
+          <div className="location-cards scroll-area">
             {rows.map((row) => {
-              const air = row.airQuality;
-              const airLive = air !== null && air.state !== 'lost';
-              const breaches = airLive && air ? breachesFor(air) : [];
+              const air = reporting(row.airQuality);
+              const motion = reporting(row.motion);
+              const energy = reporting(row.energy);
+
               return (
-                <div className="card" key={row.location}>
-                  <div className="hd">
-                    <span className="n">{row.location.toUpperCase()}</span>
-                    <span className="sub">{typesPresent(row)}</span>
+                <div className="location-card" key={row.location}>
+                  <div className="card-header">
+                    <span className="card-name">{row.location.toUpperCase()}</span>
+                    <span className="card-types">{typesPresent(row)}</span>
                   </div>
-                  {airLive && air && (
+                  {air !== null && (
                     <>
-                      <div className="mv">
-                        <span className="k">CO2 PPM</span>
-                        <span className={isBreached('co2', air.co2) ? 'v num hot' : 'v num'}>
+                      <div className="metric-tile">
+                        <span className="metric-label">CO2 PPM</span>
+                        <span className={metricValueClass(isBreached('co2', air.co2))}>
                           {air.co2 ?? '--'}
                         </span>
                       </div>
-                      <div className="mv">
-                        <span className="k">PM2.5</span>
-                        <span className={isBreached('pm25', air.pm25) ? 'v num hot' : 'v num'}>
+                      <div className="metric-tile">
+                        <span className="metric-label">PM2.5</span>
+                        <span className={metricValueClass(isBreached('pm25', air.pm25))}>
                           {air.pm25 ?? '--'}
                         </span>
                       </div>
-                      <div className="mv">
-                        <span className="k">RH %</span>
-                        <span
-                          className={isBreached('humidity', air.humidity) ? 'v num hot' : 'v num'}
-                        >
+                      <div className="metric-tile">
+                        <span className="metric-label">RH %</span>
+                        <span className={metricValueClass(isBreached('humidity', air.humidity))}>
                           {air.humidity ?? '--'}
                         </span>
                       </div>
                     </>
                   )}
-                  {row.energy && row.energy.state !== 'lost' && (
-                    <div className="mv">
-                      <span className="k">ENERGY KWH</span>
-                      <span className="v num">{row.energy.kwh?.toFixed(1) ?? '--'}</span>
+                  {energy !== null && (
+                    <div className="metric-tile">
+                      <span className="metric-label">ENERGY KWH</span>
+                      <span className="metric-value tabular">{energy.kwh?.toFixed(1) ?? '--'}</span>
                     </div>
                   )}
-                  {row.motion && row.motion.state !== 'lost' && (
-                    <div className="mv">
-                      <span className="k">MOTION</span>
-                      <span className="v">{row.motion.detected === true ? 'YES' : 'NO'}</span>
+                  {motion !== null && (
+                    <div className="metric-tile">
+                      <span className="metric-label">MOTION</span>
+                      <span className="metric-value">
+                        {motion.detected === true ? 'YES' : 'NO'}
+                      </span>
                     </div>
                   )}
-                  <div className="flagline">
-                    <FeedChip
-                      state={row.worst}
-                      age={
-                        row.oldestCollectedAt === null
-                          ? '--'
-                          : formatAge(row.oldestCollectedAt, now)
-                      }
-                    />
-                    <BandChip breaches={breaches} hasThreshold={airLive} />
+                  <div className="card-flags">
+                    <FeedChip state={row.worst} age={ageOf(row)} />
+                    <BandChip breaches={breachesOf(air)} hasThreshold={air !== null} />
                   </div>
                 </div>
               );
@@ -191,10 +189,10 @@ export default function LatestValues({
       )}
 
       <div className="pager">
-        <span className="c">
+        <span className="pager-note">
           SENSOR CATALOGUE &middot; {sensorCount} SENSORS IN {rows.length} LOCATIONS
         </span>
-        <Link to="/readings" className="btn ghost">
+        <Link to="/readings" className="button button-ghost">
           OPEN IN EXPLORER &#9656;
         </Link>
       </div>

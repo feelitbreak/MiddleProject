@@ -1,5 +1,6 @@
-import { HubConnectionBuilder, HubConnectionState, type HubConnection } from '@microsoft/signalr';
 import { useEffect, useRef, useState } from 'react';
+import { HUB_URL } from '../config';
+import type { HubConnection } from '@microsoft/signalr';
 
 /**
  * The `readingsChanged` payload, camelCase on the wire and pinned by an integration test in
@@ -20,8 +21,6 @@ export interface LiveReadings {
   readonly eventsSeen: number;
 }
 
-const HUB_URL = '/hubs/readings';
-
 /**
  * Events arrive in bursts of one or two per injector poll and delivery is at-least-once, so the
  * refetch is debounced rather than fired per event.
@@ -33,6 +32,9 @@ const REFETCH_DEBOUNCE_MS = 400;
  * client refetches the gateway, which stays the single source of readings. A reconnect also
  * refetches, because events during the gap are lost -- the consumer reads from Latest with no
  * replay, so one query covers whatever was missed.
+ *
+ * The client is imported dynamically: nothing on first paint needs it, and it is 17 kB that would
+ * otherwise sit on the critical path.
  */
 export function useLiveReadings(onChanged: () => void): LiveReadings {
   const [hubState, setHubState] = useState<HubState>('connecting');
@@ -46,38 +48,50 @@ export function useLiveReadings(onChanged: () => void): LiveReadings {
   }, [onChanged]);
 
   useEffect(() => {
-    const connection: HubConnection = new HubConnectionBuilder()
-      .withUrl(HUB_URL)
-      .withAutomaticReconnect()
-      .build();
-
+    let connection: HubConnection | undefined;
     let debounce: ReturnType<typeof setTimeout> | undefined;
+    // The import resolves after this effect may already have been torn down.
+    let cancelled = false;
+
     const scheduleRefetch = () => {
       if (debounce !== undefined) clearTimeout(debounce);
       debounce = setTimeout(() => onChangedRef.current(), REFETCH_DEBOUNCE_MS);
     };
 
-    connection.on('readingsChanged', (event: ReadingsChanged) => {
-      setLastEvent(event);
-      setEventsSeen((seen) => seen + 1);
-      scheduleRefetch();
-    });
+    const connect = async () => {
+      const { HubConnectionBuilder } = await import('@microsoft/signalr');
+      if (cancelled) return;
 
-    connection.onreconnecting(() => setHubState('reconnecting'));
-    connection.onreconnected(() => {
-      setHubState('connected');
-      scheduleRefetch();
-    });
-    connection.onclose(() => setHubState('disconnected'));
+      const hub = new HubConnectionBuilder().withUrl(HUB_URL).withAutomaticReconnect().build();
+      connection = hub;
 
-    connection
-      .start()
-      .then(() => setHubState('connected'))
-      .catch(() => setHubState('disconnected'));
+      hub.on('readingsChanged', (event: ReadingsChanged) => {
+        setLastEvent(event);
+        setEventsSeen((seen) => seen + 1);
+        scheduleRefetch();
+      });
+
+      hub.onreconnecting(() => setHubState('reconnecting'));
+      hub.onreconnected(() => {
+        setHubState('connected');
+        scheduleRefetch();
+      });
+      hub.onclose(() => setHubState('disconnected'));
+
+      try {
+        await hub.start();
+        setHubState(cancelled ? 'disconnected' : 'connected');
+      } catch {
+        if (!cancelled) setHubState('disconnected');
+      }
+    };
+
+    void connect();
 
     return () => {
+      cancelled = true;
       if (debounce !== undefined) clearTimeout(debounce);
-      if (connection.state !== HubConnectionState.Disconnected) void connection.stop();
+      void connection?.stop();
     };
   }, []);
 

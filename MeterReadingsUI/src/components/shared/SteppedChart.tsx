@@ -38,9 +38,9 @@ export default function SteppedChart({ series, ticks, unit, threshold }: Stepped
   const periods = series[0]?.values.length ?? 0;
   if (periods < 2) {
     return (
-      <div className="empty">
-        <span className="t">NOT ENOUGH PERIODS</span>
-        <span className="s">
+      <div className="empty-state">
+        <span className="empty-title">NOT ENOUGH PERIODS</span>
+        <span className="empty-detail">
           This range covers fewer than two periods. Widen it or pick a shorter interval.
         </span>
       </div>
@@ -59,7 +59,6 @@ export default function SteppedChart({ series, ticks, unit, threshold }: Stepped
       preserveAspectRatio="none"
       role="img"
       aria-label={`Stepped chart, one series per location, in ${unit}`}
-      style={{ width: '100%', height: '100%' }}
     >
       <defs>
         <pattern
@@ -207,16 +206,14 @@ export default function SteppedChart({ series, ticks, unit, threshold }: Stepped
 
 export function ChartLegend({ series, note }: { series: readonly ChartSeries[]; note?: string }) {
   return (
-    <div className="lg">
+    <div className="chart-legend">
       {series.map((s) => (
-        <span key={s.name}>
-          <i style={{ background: s.colour }} />
+        <span className="chart-legend-item" key={s.name}>
+          <i className="chart-legend-swatch" style={{ background: s.colour }} />
           {s.name.toUpperCase()}
         </span>
       ))}
-      {note !== undefined && (
-        <span style={{ marginLeft: 'auto', color: 'var(--ink-soft)' }}>{note}</span>
-      )}
+      {note !== undefined && <span className="chart-legend-note">{note}</span>}
     </div>
   );
 }

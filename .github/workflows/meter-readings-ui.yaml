@@ -20,6 +20,9 @@ jobs:
         working-directory: ./MeterReadingsUI
     steps:
       - uses: actions/checkout@v6
+        with:
+          # Sonar reads history to attribute issues to the commit that introduced them.
+          fetch-depth: 0
       - name: Setup Node
         uses: actions/setup-node@v5
         with:
@@ -34,6 +37,8 @@ jobs:
         run: npm run lint
       - name: Typecheck
         run: npm run typecheck
+      - name: Test
+        run: npm test
       - name: Build
         run: npm run build
       # The generated types are committed, so a gateway schema change that nobody regenerated
@@ -42,6 +47,12 @@ jobs:
         run: |
           npm run codegen
           git diff --exit-code -- src/graphql/generated
+      - name: SonarQube scan
+        uses: SonarSource/sonarqube-scan-action@v6
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN_METER_READINGS_UI }}
+        with:
+          projectBaseDir: MeterReadingsUI
 
   publish:
     if: github.ref == 'refs/heads/main'
