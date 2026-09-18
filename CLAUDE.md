@@ -77,11 +77,21 @@ rather than fixing it blind.
 
 ## Frontend (React + TypeScript)
 
-Not yet present. When added: strict TypeScript, no `any`, function components with hooks, and the
-same preference for platform and library built-ins over bespoke utilities.
+[MeterReadingsUI](MeterReadingsUI) -- see its README for the design system and the live-update
+seam. Vite, strict TypeScript with no `any`, function components with hooks, and the same
+preference for platform and library built-ins over bespoke utilities.
+
+- Relative imports, no path aliases and no barrel files. PascalCase components, camelCase
+  everything else.
+- GraphQL types are generated from the gateway's committed schema and committed here; CI fails on a
+  diff. Never hand-write a type the schema already describes.
+- One filter object drives every panel. No state library: Apollo's cache and one `useState` cover it.
+- Alert thresholds are the UI's own invention and live in one file; any surface that judges a value
+  prints the number it used.
+- Verify with `npm run format:check && npm run lint && npm run typecheck && npm run build`.
 
 ## Local stack
 
 `docker compose up -d` from the repo root. Postgres `meterdb` (`postgres`/`postgres`, local only),
 Kafka UI on 8070, Prometheus 9090, Grafana 3000, injector 8082, processor 8084,
-gateway 8086, notifications 8088.
+gateway 8086, notifications 8088, UI 8090.

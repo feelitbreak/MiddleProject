@@ -10,7 +10,7 @@ WeakApp API --(HTTP poll)--> DataInjectorService --(Kafka: meter-readings)--> Da
                                                                                     |                     |
                                                                  (Kafka: meter-readings-persisted) (read-only queries)
                                                                                     v                     v
-                                       browser <--(SignalR: /hubs/readings)-- NotificationService   GraphQLGatewayService
+                              MeterReadingsUI <--(SignalR: /hubs/readings)-- NotificationService   GraphQLGatewayService
                                           |                                                               ^
                                           +---------------------------(GraphQL: /graphql) refetch---------+
 ```
@@ -22,6 +22,7 @@ WeakApp API --(HTTP poll)--> DataInjectorService --(Kafka: meter-readings)--> Da
 | [`data_processor`](DataProcessorService) | Consumes readings, persists them to PostgreSQL | 8084, 8085 |
 | [`graphql_gateway`](GraphQLGatewayService) | Serves the dashboard's GraphQL API, reading PostgreSQL directly | 8086, 8087 |
 | [`notification_service`](NotificationService) | Pushes "new data, refetch" signals to browsers over SignalR | 8088, 8089 |
+| [`meter_readings_ui`](MeterReadingsUI) | The dashboard: React and TypeScript over the gateway and the hub | 8090 |
 | `postgres` | Reading storage | 5432 |
 | `kafka` | Message queue | 9092 |
 | `kafka-cluster-ui` | Kafka topic and consumer group browser | 8070 |

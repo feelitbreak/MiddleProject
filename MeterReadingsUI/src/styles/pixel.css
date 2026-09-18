@@ -1,0 +1,930 @@
+/* Meter Readings UI — Pixel Workstation design system.
+
+   Two colour families, kept apart on purpose:
+   - CHROME is desaturated. It never appears on a reading.
+   - STATE is saturated and only ever lands on data: a cell, a chip, a chart series.
+   Purple is reserved for one thing only — what the viewer has filtered to.
+
+   Feed age and value band are separate concerns and get separate columns; a sensor can be
+   stale and out of band at the same time, and one column could only report the worse of the two. */
+
+:root {
+  /* chrome — overridden per ground theme below */
+  --desk: #fff4c4;
+  --face: #fffdf6;
+  --chrome: #ffd3e0;
+  --chrome-2: #ffb8ce;
+  --ink: #2a2140;
+  --ink-soft: #6e6485;
+  --line: #2a2140;
+  --dot: rgba(42, 33, 64, 0.13);
+
+  /* state — data only */
+  --mint: #7fdcaf;
+  --mint-d: #0f7a52; /* in band / live */
+  --butter: #ffd24a;
+  --butter-d: #8a6200; /* stale */
+  --blush: #ff8fa9;
+  --blush-d: #b3234c; /* out of band / lost / error */
+  --lilac: #b9a9f0;
+  --lilac-d: #4a38a4; /* reserved: the viewer's active filter, nothing else */
+
+  /* sensor-type identity — fixed across every ground theme */
+  --type-aq: #7fdcaf;
+  --type-mo: #ffc2d3;
+  --type-en: #ffd24a;
+
+  --bw: 3px;
+  --shadow: 5px 5px 0 rgba(42, 33, 64, 0.82);
+  --shadow-sm: 3px 3px 0 var(--line);
+
+  /* Handjet is narrow, so every size here runs larger than a normal UI face would. */
+  --pixel: 'Handjet', monospace;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+body {
+  background: var(--desk);
+  color: var(--ink);
+  font-family: var(--pixel);
+  font-weight: 500;
+  background-image: radial-gradient(var(--dot) 1px, transparent 1px);
+  background-size: 7px 7px;
+}
+.num {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- menu bar ---------- */
+.menubar {
+  height: 42px;
+  background: var(--face);
+  border-bottom: var(--bw) solid var(--line);
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  position: relative;
+  z-index: 2;
+}
+.menubar b {
+  font-size: 15px;
+  font-weight: 600;
+  padding: 9px 13px;
+  letter-spacing: 0.07em;
+}
+.menubar b.logo {
+  background: var(--line);
+  color: var(--face);
+  margin-right: 10px;
+  letter-spacing: 0.13em;
+}
+.menubar b.route {
+  background: var(--chrome);
+  box-shadow: inset 0 -3px 0 var(--line);
+}
+.menubar .grow {
+  flex: 1;
+}
+.menubar .st {
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 11px;
+  color: var(--ink-soft);
+  letter-spacing: 0.05em;
+}
+.menubar .st .d {
+  width: 10px;
+  height: 10px;
+  background: var(--mint-d);
+}
+.menubar .st .d.warn {
+  background: var(--butter-d);
+}
+.menubar .st .d.bad {
+  background: var(--blush-d);
+}
+.menubar .clock {
+  font-size: 24px;
+  font-weight: 600;
+  padding-left: 8px;
+}
+
+/* ---------- window ---------- */
+.win {
+  border: var(--bw) solid var(--line);
+  background: var(--face);
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+}
+.tb {
+  height: 30px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 8px;
+  border-bottom: var(--bw) solid var(--line);
+  background: var(--chrome);
+  flex: none;
+}
+.tb .box {
+  width: 13px;
+  height: 13px;
+  border: 2px solid var(--line);
+  background: var(--face);
+  flex: none;
+}
+.tb .t {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  white-space: nowrap;
+}
+.tb .lines {
+  flex: 1;
+  height: 9px;
+  min-width: 10px;
+  opacity: 0.38;
+  background: repeating-linear-gradient(0deg, var(--line) 0 2px, transparent 2px 4px);
+}
+.tb.alt {
+  background: var(--lilac);
+}
+.tb.warn {
+  background: var(--butter);
+}
+.tb.hot {
+  background: var(--blush);
+}
+.wb {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.q {
+  font-size: 14px;
+  color: var(--ink-soft);
+  padding: 8px 12px;
+  letter-spacing: 0.03em;
+  border-bottom: 2px dotted rgba(42, 33, 64, 0.28);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: none;
+}
+
+/* ---------- controls ---------- */
+.fgrid {
+  padding: 11px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.fl {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.fl .k {
+  font-size: 13px;
+  color: var(--ink-soft);
+  width: 78px;
+  flex: none;
+  letter-spacing: 0.08em;
+}
+.inp {
+  flex: 1;
+  border: 2px solid var(--line);
+  background: #fff;
+  padding: 6px 9px;
+  font-size: 19px;
+  font-weight: 600;
+  display: flex;
+  justify-content: space-between;
+  gap: 6px;
+  min-width: 0;
+}
+.inp.on {
+  background: var(--lilac);
+}
+.segs {
+  display: flex;
+  border: 2px solid var(--line);
+  margin-top: 2px;
+}
+.segs b {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: center;
+  padding: 8px 0;
+  border-right: 2px solid var(--line);
+  background: #fff;
+  letter-spacing: 0.07em;
+}
+.segs b:last-child {
+  border-right: 0;
+}
+.segs b.on {
+  background: var(--lilac);
+}
+.btn {
+  font-size: 13px;
+  font-weight: 600;
+  background: var(--chrome-2);
+  border: 2px solid var(--line);
+  padding: 7px 11px;
+  box-shadow: var(--shadow-sm);
+  display: inline-block;
+  letter-spacing: 0.08em;
+}
+.btn.ghost {
+  background: var(--face);
+}
+.btn[aria-disabled='true'] {
+  background: var(--face);
+  color: var(--ink-soft);
+  box-shadow: none;
+}
+
+/* ---------- table ---------- */
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+thead th {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-soft);
+  text-align: right;
+  letter-spacing: 0.09em;
+  padding: 9px 11px;
+  border-bottom: 2px solid var(--line);
+  white-space: nowrap;
+  vertical-align: bottom;
+  position: sticky;
+  top: 0;
+  background: var(--face);
+}
+thead th:first-child,
+thead th:last-child {
+  text-align: left;
+}
+thead th i {
+  display: block;
+  font-style: normal;
+  font-size: 12px;
+  opacity: 0.6;
+  margin-top: 2px;
+  letter-spacing: 0.07em;
+}
+tbody td {
+  padding: 0 11px;
+  height: 54px;
+  border-bottom: 2px dotted rgba(42, 33, 64, 0.22);
+  text-align: right;
+  font-size: 34px;
+  font-weight: 600;
+  line-height: 1;
+}
+tbody td:first-child {
+  text-align: left;
+}
+tbody tr:hover {
+  background: rgba(185, 169, 240, 0.18);
+}
+.loc {
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+}
+.loc i {
+  display: block;
+  font-style: normal;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ink-soft);
+  margin-top: 3px;
+  letter-spacing: 0.07em;
+}
+.na {
+  color: rgba(42, 33, 64, 0.22);
+}
+/* Out of band tints the value, not the cell: filtered to one high sensor, a filled cell
+   becomes an unbroken block of colour down the whole column. */
+.hot {
+  color: var(--blush-d);
+}
+.est {
+  color: var(--butter-d);
+}
+
+/* The thresholds are ours, not the gateway's, so the page states them wherever it judges a value. */
+.bands {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 7px 12px;
+  background: var(--desk);
+  border-bottom: 2px solid var(--line);
+  font-size: 12px;
+  color: var(--ink-soft);
+  letter-spacing: 0.05em;
+  flex: none;
+}
+.bands b {
+  font-weight: 600;
+  color: var(--ink);
+}
+.tag small {
+  font-size: 11px;
+  font-weight: 500;
+  opacity: 0.8;
+  margin-left: 5px;
+}
+
+/* band chip — always carries a word, never colour alone */
+.tag {
+  font-size: 13px;
+  font-weight: 600;
+  border: 2px solid currentColor;
+  padding: 4px 8px;
+  display: inline-block;
+  letter-spacing: 0.08em;
+}
+.tag.h {
+  color: var(--blush-d);
+}
+.tag.e {
+  color: var(--butter-d);
+}
+.tag.o {
+  color: var(--mint-d);
+}
+
+/* feed chip — unbordered; the escalation is carried by fill, from none to butter to blush */
+.feed {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 9px;
+  padding: 5px 10px;
+  letter-spacing: 0.08em;
+}
+.feed b {
+  font-size: 13px;
+  font-weight: 700;
+}
+.feed .n {
+  font-size: 24px;
+  font-weight: 700;
+}
+.feed.live {
+  color: var(--mint-d);
+  background: transparent;
+}
+.feed.stale {
+  color: var(--butter-d);
+  background: var(--butter);
+}
+.feed.lost {
+  color: var(--blush-d);
+  background: var(--blush);
+}
+
+.pager {
+  margin-top: auto;
+  border-top: var(--bw) solid var(--line);
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 8px 12px;
+  background: var(--desk);
+  flex: none;
+}
+.pager .c {
+  font-size: 13px;
+  color: var(--ink-soft);
+  flex: 1;
+  letter-spacing: 0.05em;
+}
+
+/* ---------- aggregate by sensor type ---------- */
+.trow {
+  padding: 12px 14px;
+  border-bottom: var(--bw) solid var(--line);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  justify-content: center;
+}
+.trow:last-child {
+  border-bottom: 0;
+}
+.trow.aq {
+  background: var(--type-aq);
+}
+.trow.mo {
+  background: var(--type-mo);
+}
+.trow.en {
+  background: var(--type-en);
+}
+.trow .n {
+  font-size: 14px;
+  font-weight: 600;
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  letter-spacing: 0.09em;
+}
+.trow .v {
+  font-size: 44px;
+  font-weight: 700;
+  line-height: 1;
+}
+.trow .m {
+  font-size: 13px;
+  opacity: 0.75;
+  letter-spacing: 0.06em;
+}
+.spr {
+  display: flex;
+  gap: 5px;
+  margin-top: 4px;
+}
+.spr i {
+  width: 10px;
+  height: 10px;
+  border: 2px solid var(--line);
+  background: rgba(255, 255, 255, 0.7);
+}
+.spr i.bad {
+  background: var(--blush);
+}
+
+/* ---------- arrivals ---------- */
+.ar {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 11px 12px;
+  border-bottom: 2px dotted rgba(42, 33, 64, 0.22);
+  font-size: 22px;
+  font-weight: 600;
+}
+.ar .w {
+  font-size: 14px;
+  flex: 1;
+  letter-spacing: 0.07em;
+}
+.ar s {
+  color: rgba(42, 33, 64, 0.34);
+  font-size: 17px;
+}
+.ar.f {
+  background: var(--mint);
+}
+.ar .tk {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ink-soft);
+  letter-spacing: 0.06em;
+}
+
+/* ---------- messages ---------- */
+.msg {
+  padding: 12px;
+  border-top: var(--bw) solid var(--line);
+}
+.msg.err {
+  background: var(--blush);
+}
+.msg.warn {
+  background: var(--butter);
+}
+.msg .h {
+  font-size: 14px;
+  font-weight: 700;
+  margin-bottom: 5px;
+  letter-spacing: 0.08em;
+}
+.msg.err .h {
+  color: var(--blush-d);
+}
+.msg.warn .h {
+  color: var(--butter-d);
+}
+.msg .m {
+  font-size: 17px;
+  line-height: 1.4;
+}
+.msg .c {
+  font-size: 12px;
+  font-weight: 500;
+  margin-top: 5px;
+  opacity: 0.78;
+  letter-spacing: 0.05em;
+}
+
+.empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 15px;
+  padding: 28px;
+  text-align: center;
+}
+.empty .t {
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+}
+.empty .s {
+  font-size: 17px;
+  color: var(--ink-soft);
+  max-width: 38ch;
+  line-height: 1.45;
+}
+
+/* Loading never blanks a panel: the previous value stays and only this strip moves. */
+.loadbar {
+  height: 9px;
+  border-bottom: 2px solid var(--line);
+  background: var(--desk);
+  overflow: hidden;
+  flex: none;
+}
+.loadbar i {
+  display: block;
+  height: 100%;
+  width: 34%;
+  background: repeating-linear-gradient(90deg, var(--lilac-d) 0 6px, var(--lilac) 6px 12px);
+  animation: march 1.1s linear infinite;
+}
+@keyframes march {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(330%);
+  }
+}
+.stalev {
+  opacity: 0.5;
+}
+
+/* ---------- chart ---------- */
+.plot {
+  flex: 1;
+  min-height: 0;
+  padding: 12px 14px 4px;
+}
+.lg {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  padding: 0 14px 12px;
+  flex-wrap: wrap;
+  flex: none;
+}
+.lg span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+}
+.lg i {
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--line);
+}
+
+/* ---------- app shell ---------- */
+#root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+/* The status strip is a flex row at every width; below 720px it drops onto its own line. */
+.menubar .strip {
+  display: flex;
+  align-items: center;
+  margin-left: auto;
+}
+a {
+  color: inherit;
+  text-decoration: none;
+}
+button {
+  font: inherit;
+  color: inherit;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+select,
+input {
+  font: inherit;
+  color: inherit;
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.menubar b.route {
+  cursor: pointer;
+}
+.menubar b.route[aria-current='page'] {
+  background: var(--chrome);
+  box-shadow: inset 0 -3px 0 var(--line);
+}
+.menubar b.route:not([aria-current='page']) {
+  background: transparent;
+  box-shadow: none;
+}
+
+/* the filter's controls are real form elements, styled as the comp's boxes */
+.inp select,
+.inp input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  outline: none;
+  font-size: 18px;
+  font-weight: 600;
+  font-family: var(--pixel);
+}
+.inp:focus-within {
+  outline: 3px solid var(--lilac-d);
+  outline-offset: 1px;
+}
+.segs b {
+  cursor: pointer;
+}
+.chip button {
+  font: inherit;
+  padding: 0 0 0 4px;
+}
+
+.console {
+  padding: 22px;
+  display: grid;
+  gap: 26px;
+  flex: 1;
+  overflow: auto;
+  grid-template-columns: 292px minmax(0, 1fr) 302px;
+  grid-template-rows: auto minmax(96px, 1fr) 230px;
+  grid-template-areas: 'filter latest arrivals' 'types latest arrivals' 'types aggr aggr';
+}
+.a-filter {
+  grid-area: filter;
+}
+.a-latest {
+  grid-area: latest;
+}
+.a-types {
+  grid-area: types;
+}
+.a-arrivals {
+  grid-area: arrivals;
+}
+.a-aggr {
+  grid-area: aggr;
+}
+.scrolls {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+.explorer {
+  padding: 22px;
+  display: grid;
+  gap: 26px;
+  flex: 1;
+  overflow: auto;
+  grid-template-columns: 292px minmax(0, 1fr);
+  grid-template-rows: auto minmax(220px, 1fr);
+  grid-template-areas: 'filter readings' 'summary readings';
+}
+.a-summary {
+  grid-area: summary;
+}
+.a-readings {
+  grid-area: readings;
+}
+.explorer tbody td {
+  height: 48px;
+  font-size: 26px;
+}
+.explorer tbody td.loc {
+  font-size: 14px;
+}
+.when {
+  font-size: 19px;
+  text-align: left;
+}
+.when i {
+  display: block;
+  font-style: normal;
+  font-size: 12px;
+  color: var(--ink-soft);
+  margin-top: 2px;
+}
+.sum {
+  padding: 14px;
+  border-bottom: 2px dotted rgba(42, 33, 64, 0.28);
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.sum .k {
+  font-size: 12px;
+  color: var(--ink-soft);
+  letter-spacing: 0.07em;
+}
+.sum .v {
+  font-size: 34px;
+  font-weight: 700;
+  line-height: 1;
+}
+.sum .m {
+  font-size: 12px;
+  opacity: 0.75;
+  letter-spacing: 0.05em;
+}
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 10px 12px;
+}
+.chip {
+  font-size: 12px;
+  background: var(--lilac);
+  border: 2px solid var(--line);
+  padding: 4px 7px;
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  letter-spacing: 0.05em;
+}
+.scope {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 10px 12px;
+  background: var(--lilac);
+  border-bottom: 3px solid var(--line);
+  font-size: 16px;
+  letter-spacing: 0.08em;
+  flex: none;
+}
+.scope span {
+  opacity: 0.6;
+}
+.scope em {
+  font-style: normal;
+  margin-left: auto;
+  font-size: 12px;
+  opacity: 0.75;
+}
+
+/* ---------- responsive ---------- */
+@media (max-width: 1100px) {
+  .console,
+  .explorer {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: none;
+    grid-template-areas: none;
+    display: flex;
+    flex-direction: column;
+    padding: 16px;
+    gap: 24px;
+  }
+  .a-latest,
+  .a-readings {
+    min-height: 520px;
+  }
+  .a-aggr {
+    min-height: 300px;
+  }
+  .a-arrivals {
+    min-height: 340px;
+  }
+  .scrolls {
+    overflow: visible;
+  }
+}
+@media (max-width: 720px) {
+  .menubar {
+    height: auto;
+    flex-wrap: wrap;
+    padding: 0;
+  }
+  .menubar b {
+    font-size: 13px;
+    padding: 10px;
+  }
+  .menubar .grow {
+    display: none;
+  }
+  .menubar .strip {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    border-top: 2px solid var(--line);
+    background: var(--desk);
+  }
+  .menubar .clock {
+    margin-left: auto;
+    padding: 6px 10px;
+    font-size: 18px;
+  }
+  /* the six-column table cannot hold 34px numerals at this width: one card per location instead */
+  .wide-only {
+    display: none;
+  }
+  .cards {
+    display: flex;
+    flex-direction: column;
+  }
+  .card {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 7px 10px;
+    padding: 12px;
+    border-bottom: 2px dotted rgba(42, 33, 64, 0.22);
+  }
+  .card .hd {
+    grid-column: 1/-1;
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+  }
+  .card .hd .n {
+    font-size: 15px;
+    letter-spacing: 0.06em;
+  }
+  .card .hd .sub {
+    font-size: 11px;
+    color: var(--ink-soft);
+  }
+  .card .hd .a {
+    margin-left: auto;
+  }
+  .card .flagline {
+    grid-column: 1/-1;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .mv {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 6px;
+    padding: 5px 7px;
+    border: 2px solid var(--line);
+    background: #fff;
+  }
+  .mv .k {
+    font-size: 11px;
+    color: var(--ink-soft);
+  }
+  .mv .v {
+    font-size: 26px;
+    font-weight: 700;
+    line-height: 1;
+  }
+}
+@media (min-width: 721px) {
+  .cards {
+    display: none;
+  }
+}
