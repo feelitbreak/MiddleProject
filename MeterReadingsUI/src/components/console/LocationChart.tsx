@@ -40,10 +40,14 @@ export default function LocationChart({ metric, interval, where }: LocationChart
 
     const built: ChartSeries[] = aggregates.map((s, index) => {
       const byPeriod = new Map(s.points.map((p) => [p.periodStart, p.average]));
+      const values = allPeriods.map((period) => byPeriod.get(period) ?? null);
+      const gap = values.indexOf(null);
       return {
         name: s.location,
         colour: seriesColour(index),
-        values: allPeriods.map((period) => byPeriod.get(period) ?? null),
+        values,
+        // The last period that reported, so the hatched gap says since when.
+        lostAt: gap > 0 ? formatClock(allPeriods[gap - 1] ?? '').slice(0, 5) : undefined,
       };
     });
 

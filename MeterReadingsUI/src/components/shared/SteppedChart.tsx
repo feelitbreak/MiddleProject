@@ -5,6 +5,8 @@ export interface ChartSeries {
   readonly colour: string;
   /** null marks a period the series has no data for; the gap is drawn, never interpolated. */
   readonly values: readonly (number | null)[];
+  /** Clock time of the last period that reported, labelling the gap. */
+  readonly lostAt?: string;
 }
 
 interface SteppedChartProps {
@@ -105,14 +107,27 @@ export default function SteppedChart({ series, ticks, unit, threshold }: Stepped
         const gap = s.values.indexOf(null);
         if (gap <= 0) return null;
         return (
-          <rect
-            key={`gap-${s.name}`}
-            x={x(gap - 1)}
-            y={HEIGHT - PAD.bottom - 7}
-            width={WIDTH - PAD.right - x(gap - 1)}
-            height={7}
-            fill="url(#lostHatch)"
-          />
+          <Fragment key={`gap-${s.name}`}>
+            <rect
+              x={x(gap - 1)}
+              y={HEIGHT - PAD.bottom - 7}
+              width={WIDTH - PAD.right - x(gap - 1)}
+              height={7}
+              fill="url(#lostHatch)"
+            />
+            {s.lostAt !== undefined && (
+              <text
+                x={x(gap - 1) + 8}
+                y={HEIGHT - PAD.bottom - 12}
+                fill="#B3234C"
+                fontFamily="Handjet"
+                fontSize={13}
+                fontWeight={600}
+              >
+                {`${s.name.toUpperCase()} - NO DATA SINCE ${s.lostAt}`}
+              </text>
+            )}
+          </Fragment>
         );
       })}
 

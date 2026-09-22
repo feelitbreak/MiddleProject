@@ -3,5 +3,9 @@
  * forward them. Vite inlines these at build time, so a container cannot be repointed without a
  * rebuild -- change nginx.conf instead.
  */
-export const GRAPHQL_URL = import.meta.env.VITE_GRAPHQL_URL ?? '/graphql';
-export const HUB_URL = import.meta.env.VITE_HUB_URL ?? '/hubs/readings';
+
+// Vite injects `import.meta.env`; under Jest there is no injection, so the defaults below apply.
+const env: Partial<ImportMetaEnv> = import.meta.env ?? {};
+
+export const GRAPHQL_URL = env.VITE_GRAPHQL_URL ?? '/graphql';
+export const HUB_URL = env.VITE_HUB_URL ?? '/hubs/readings';

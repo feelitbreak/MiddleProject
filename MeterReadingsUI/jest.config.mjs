@@ -21,11 +21,10 @@ export default {
     '!src/**/*.d.ts',
     '!src/main.tsx',
     '!src/graphql/generated/**',
+    '!src/testing/**',
   ],
   coverageDirectory: 'coverage',
   // lcov for SonarQube, html to browse locally at coverage/lcov-report/index.html.
   coverageReporters: ['lcov', 'html', 'text-summary'],
   testMatch: ['<rootDir>/src/**/*.test.{ts,tsx}'],
-  // Nothing is tested yet; the first test file removes the need for this.
-  passWithNoTests: true,
 };

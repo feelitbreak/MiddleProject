@@ -173,11 +173,24 @@ compile error here rather than a runtime surprise.
 ## Testing
 
 Jest with ts-jest, jsdom and Testing Library. Tests sit beside what they cover as
-`Name.test.ts(x)`. Coverage is always collected because SonarQube reads `coverage/lcov.info`; open
-`coverage/lcov-report/index.html` to browse it.
+`Name.test.ts(x)`; shared builders live in `src/testing`. Coverage is always collected because
+SonarQube reads `coverage/lcov.info`; open `coverage/lcov-report/index.html` to browse it.
 
-The domain layer is pure functions with no React, so `thresholds`, `freshness` and `locations` test
-without a renderer.
+147 tests across 16 suites, around 93% of lines. What they pin:
+
+- **Domain** -- threshold boundaries (a value exactly on the limit is inside it), the freshness
+  boundaries at two and fifteen minutes, and the location pivot keeping each sensor's own age.
+- **`useLiveReadings`** -- against a mocked hub: a burst of events costs one refetch, a reconnect
+  costs one more, and a pending refetch is cancelled on unmount.
+- **Components** -- a lost sensor renders no value while a stale one still renders its last, feed
+  age and value band are reported independently, and errors surface the gateway's own
+  `extensions.code`.
+- **Pages** -- against `MockedProvider`: pagination state, the empty and error surfaces, and the
+  identity columns collapsing once one location is filtered.
+
+Jest runs in ESM, which has two consequences worth knowing: `jest` is not a global, so a test that
+mocks imports `{ jest }` from `@jest/globals`, and module mocks use `jest.unstable_mockModule`
+followed by a dynamic `import` of the module under test.
 
 ```bash
 npm test
@@ -189,6 +202,17 @@ npm run test:watch
 ```bash
 npm run format:check && npm run lint && npm run typecheck && npm test && npm run build
 ```
+
+## Dependency advisories
+
+`npm run audit` writes `audit-report.json`; `npm run audit:summary` turns it into a readable table.
+
+Advisories are published on someone else's schedule, so a new one can appear against a commit
+nobody has touched. CI therefore **reports and never blocks** -- otherwise a CVE disclosed on a
+Tuesday would stop Wednesday's release, and stop a rollback to the tag that was fine on Monday.
+
+Nothing enforces a severity threshold. On a live product that belongs in a scheduled job off the
+release path, so a red run is a signal to plan a fix rather than something that stops a deploy.
 
 ## CI/CD
 

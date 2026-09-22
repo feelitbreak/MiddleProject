@@ -33,8 +33,24 @@ jobs:
         run: npm ci
       - name: Format
         run: npm run format:check
+      # Errors fail this step; warnings (deprecations among them) are reported and do not. A
+      # deprecation must never block a release or a rollback of code that already works.
       - name: Lint
         run: npm run lint
+      - name: Collect lint warnings for Sonar
+        if: always()
+        run: npm run lint:report || true
+      - name: Summarise lint warnings
+        if: always()
+        run: node scripts/lint-summary.mjs
+      # Reports only. An advisory can be published against an unchanged commit, so this must never
+      # be what stops a release going out or a known-good tag being redeployed.
+      - name: Audit dependencies
+        if: always()
+        run: npm run audit
+      - name: Summarise audit
+        if: always()
+        run: npm run audit:summary
       - name: Typecheck
         run: npm run typecheck
       - name: Test

@@ -91,6 +91,10 @@ preference for platform and library built-ins over bespoke utilities.
 - Verify with `npm run format:check && npm run lint && npm run typecheck && npm test && npm run build`.
 - Class names describe what they mark (`.filter-label`, not `.k`). Every grid track is a fraction
   or a fixed size: an `auto` track spanned by a scrolling panel grows to its full content height.
+- `@typescript-eslint/no-deprecated` is a **warning, not an error**. A deprecation never fails a
+  build: it would block a release or a rollback over advisory information. CI reports it in the job
+  summary and imports it into SonarQube instead.
+- Same rule for `npm audit`: CI reports advisories and nothing enforces a severity threshold.
 
 ## Local stack
 
