@@ -15,7 +15,7 @@ const FEED_CLASS: Record<FeedState, string> = {
 };
 
 /** Feed age. Carries its word as well as its fill, so colour is never the only signal. */
-export function FeedChip({ state, age }: { state: FeedState; age: string }) {
+export function FeedChip({ state, age }: Readonly<{ state: FeedState; age: string }>) {
   return (
     <span className={`feed-chip ${FEED_CLASS[state]}`}>
       <b className="feed-chip-word">{FEED_WORD[state]}</b>
@@ -28,10 +28,10 @@ export function FeedChip({ state, age }: { state: FeedState; age: string }) {
 export function BandChip({
   breaches,
   hasThreshold,
-}: {
+}: Readonly<{
   breaches: Breach[];
   hasThreshold: boolean;
-}) {
+}>) {
   if (!hasThreshold) return <span className="no-value">&mdash;</span>;
 
   const first = breaches[0];
@@ -62,7 +62,7 @@ export function ThresholdStrip() {
         PM2.5 <b className="threshold-value">&gt;{pm25.max} UG/M3</b>
       </span>
       <span>
-        RH{' '}
+        <span>RH </span>
         <b className="threshold-value">
           OUTSIDE {humidityPercent.min}-{humidityPercent.max}%
         </b>
@@ -75,8 +75,8 @@ export function ThresholdStrip() {
 /** Refetching never blanks a panel; only this strip moves. */
 export function RefreshBar() {
   return (
-    <div className="refresh-bar" role="status" aria-label="Refreshing">
+    <output className="refresh-bar" aria-label="Refreshing">
       <i className="refresh-bar-fill" />
-    </div>
+    </output>
   );
 }

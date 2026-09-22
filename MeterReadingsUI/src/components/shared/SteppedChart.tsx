@@ -36,7 +36,12 @@ function niceBounds(series: readonly ChartSeries[]): { min: number; max: number 
  * Drawn by hand rather than with a charting library: the design calls for mitred steps, square
  * markers and a hard outline, which is most of a library's defaults overridden anyway.
  */
-export default function SteppedChart({ series, ticks, unit, threshold }: SteppedChartProps) {
+export default function SteppedChart({
+  series,
+  ticks,
+  unit,
+  threshold,
+}: Readonly<SteppedChartProps>) {
   const periods = series[0]?.values.length ?? 0;
   if (periods < 2) {
     return (
@@ -219,7 +224,10 @@ export default function SteppedChart({ series, ticks, unit, threshold }: Stepped
   );
 }
 
-export function ChartLegend({ series, note }: { series: readonly ChartSeries[]; note?: string }) {
+export function ChartLegend({
+  series,
+  note,
+}: Readonly<{ series: readonly ChartSeries[]; note?: string }>) {
   return (
     <div className="chart-legend">
       {series.map((s) => (

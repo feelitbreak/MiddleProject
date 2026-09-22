@@ -32,7 +32,7 @@ export default function FilterPanel({
   showPageSize = false,
   pageSize = 25,
   onPageSize,
-}: FilterPanelProps) {
+}: Readonly<FilterPanelProps>) {
   const { filter, set, clear, active } = controls;
 
   return (
@@ -143,7 +143,7 @@ export default function FilterPanel({
           </label>
         )}
 
-        <div className="segmented" role="group" aria-label="Aggregation interval">
+        <fieldset className="segmented" aria-label="Aggregation interval">
           {INTERVALS.map((interval) => (
             <button
               type="button"
@@ -159,7 +159,7 @@ export default function FilterPanel({
               {interval}
             </button>
           ))}
-        </div>
+        </fieldset>
       </div>
 
       {active.length > 0 && (

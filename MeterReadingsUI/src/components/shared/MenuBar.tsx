@@ -27,7 +27,7 @@ function gatewayDotClass(status: HealthStatus | null): string {
   return 'status-dot status-dot-warning';
 }
 
-export default function MenuBar({ hubState, gatewayStatus, clock }: MenuBarProps) {
+export default function MenuBar({ hubState, gatewayStatus, clock }: Readonly<MenuBarProps>) {
   return (
     <nav className="menubar">
       <b className="menubar-item menubar-logo">METER READINGS</b>

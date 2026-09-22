@@ -15,7 +15,7 @@ function mean(values: readonly number[]): number | null {
  * issuing three more aggregate queries: this panel answers "what is each type reading now", which
  * is exactly what `latestReadings` returned.
  */
-export default function SensorTypeAggregates({ rows }: SensorTypeAggregatesProps) {
+export default function SensorTypeAggregates({ rows }: Readonly<SensorTypeAggregatesProps>) {
   const reporting = <T extends { state: string }>(slots: readonly (T | null)[]): T[] =>
     slots.filter((slot): slot is T => slot !== null && slot.state !== 'lost');
 

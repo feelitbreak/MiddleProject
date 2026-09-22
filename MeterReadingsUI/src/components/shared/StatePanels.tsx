@@ -48,7 +48,10 @@ function EmptyIcon() {
   );
 }
 
-export function ErrorPanel({ error, onRetry }: { error: ApolloError; onRetry: () => void }) {
+export function ErrorPanel({
+  error,
+  onRetry,
+}: Readonly<{ error: ApolloError; onRetry: () => void }>) {
   const code = errorCode(error);
   const correlation = correlationId(error);
   return (
@@ -78,12 +81,12 @@ export function EmptyPanel({
   detail,
   actionLabel,
   onAction,
-}: {
+}: Readonly<{
   title: string;
   detail: string;
   actionLabel?: string;
   onAction?: () => void;
-}) {
+}>) {
   return (
     <div className="empty-state">
       <EmptyIcon />

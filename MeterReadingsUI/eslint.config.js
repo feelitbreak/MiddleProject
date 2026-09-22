@@ -5,12 +5,20 @@ import reactHooks from 'eslint-plugin-react-hooks';
 import reactRefresh from 'eslint-plugin-react-refresh';
 import tseslint from 'typescript-eslint';
 import prettier from 'eslint-config-prettier';
+import sonarjs from 'eslint-plugin-sonarjs';
 
 export default defineConfig([
   globalIgnores(['dist', 'coverage', 'src/graphql/generated']),
   {
     files: ['**/*.{ts,tsx}'],
-    extends: [js.configs.recommended, tseslint.configs.recommendedTypeChecked, prettier],
+    // SonarJS runs the same rules SonarQube enforces in CI, mirroring how every .NET project here
+    // references SonarAnalyzer.CSharp so the server's findings surface locally first.
+    extends: [
+      js.configs.recommended,
+      tseslint.configs.recommendedTypeChecked,
+      sonarjs.configs.recommended,
+      prettier,
+    ],
     languageOptions: {
       ecmaVersion: 2023,
       globals: globals.browser,

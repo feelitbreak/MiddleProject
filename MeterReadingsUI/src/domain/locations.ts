@@ -37,60 +37,73 @@ export interface LocationRow {
  * location. Pivoting them into one row per location fills every column instead of leaving two
  * thirds of each row empty. Each sensor keeps its own age, because they can drift apart.
  */
-export function groupByLocation(readings: readonly Reading[], now: number): LocationRow[] {
+function bySensorName(readings: readonly Reading[]): Map<string, Reading[]> {
   const byLocation = new Map<string, Reading[]>();
   for (const reading of readings) {
     const group = byLocation.get(reading.sensor.name);
     if (group) group.push(reading);
     else byLocation.set(reading.sensor.name, [reading]);
   }
+  return byLocation;
+}
 
-  const rows: LocationRow[] = [];
-  for (const [location, group] of byLocation) {
-    const air = group.find((r) => r.sensor.type === 'AIR_QUALITY');
-    const motion = group.find((r) => r.sensor.type === 'MOTION');
-    const energy = group.find((r) => r.sensor.type === 'ENERGY');
+function worstOf(group: readonly Reading[], now: number): FeedState {
+  return group.reduce<FeedState>(
+    (worst, reading) => worseState(worst, feedStateAt(reading.collectedAt, now)),
+    'live',
+  );
+}
 
-    let worst: FeedState = 'live';
-    let oldest: string | null = null;
-    for (const reading of group) {
-      worst = worseState(worst, feedStateAt(reading.collectedAt, now));
-      if (oldest === null || Date.parse(reading.collectedAt) < Date.parse(oldest)) {
-        oldest = reading.collectedAt;
-      }
-    }
+function oldestOf(group: readonly Reading[]): string | null {
+  return group.reduce<string | null>(
+    (oldest, reading) =>
+      oldest === null || Date.parse(reading.collectedAt) < Date.parse(oldest)
+        ? reading.collectedAt
+        : oldest,
+    null,
+  );
+}
 
-    rows.push({
-      location,
-      airQuality: air
-        ? {
-            co2: air.co2,
-            pm25: air.pm25,
-            humidity: air.humidity,
-            collectedAt: air.collectedAt,
-            state: feedStateAt(air.collectedAt, now),
-          }
-        : null,
-      motion: motion
-        ? {
-            detected: motion.motionDetected,
-            collectedAt: motion.collectedAt,
-            state: feedStateAt(motion.collectedAt, now),
-          }
-        : null,
-      energy: energy
-        ? {
-            kwh: energy.energyKwh,
-            collectedAt: energy.collectedAt,
-            state: feedStateAt(energy.collectedAt, now),
-          }
-        : null,
-      worst,
-      oldestCollectedAt: oldest,
-    });
-  }
+function toRow(location: string, group: readonly Reading[], now: number): LocationRow {
+  const find = (type: Reading['sensor']['type']) => group.find((r) => r.sensor.type === type);
+  const air = find('AIR_QUALITY');
+  const motion = find('MOTION');
+  const energy = find('ENERGY');
 
-  return rows.sort((a, b) => a.location.localeCompare(b.location));
+  return {
+    location,
+    airQuality: air
+      ? {
+          co2: air.co2,
+          pm25: air.pm25,
+          humidity: air.humidity,
+          collectedAt: air.collectedAt,
+          state: feedStateAt(air.collectedAt, now),
+        }
+      : null,
+    motion: motion
+      ? {
+          detected: motion.motionDetected,
+          collectedAt: motion.collectedAt,
+          state: feedStateAt(motion.collectedAt, now),
+        }
+      : null,
+    energy: energy
+      ? {
+          kwh: energy.energyKwh,
+          collectedAt: energy.collectedAt,
+          state: feedStateAt(energy.collectedAt, now),
+        }
+      : null,
+    worst: worstOf(group, now),
+    oldestCollectedAt: oldestOf(group),
+  };
+}
+
+export function groupByLocation(readings: readonly Reading[], now: number): LocationRow[] {
+  return [...bySensorName(readings)]
+    .map(([location, group]) => toRow(location, group, now))
+    .sort((a, b) => a.location.localeCompare(b.location));
 }
 
 /** Sensor types present at a location, for the row's subtitle. */

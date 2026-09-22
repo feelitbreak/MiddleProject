@@ -25,7 +25,7 @@ const MAX_TICKS = 6;
  * `readingAggregates` already returns one series per location with its own unit, so a chart maps
  * straight onto it: no client-side grouping and no unit lookup to drift from the metric enum.
  */
-export default function LocationChart({ metric, interval, where }: LocationChartProps) {
+export default function LocationChart({ metric, interval, where }: Readonly<LocationChartProps>) {
   const { data, loading, error, refetch } = useQuery(READING_AGGREGATES, {
     variables: { metric, interval, where },
   });
@@ -34,9 +34,11 @@ export default function LocationChart({ metric, interval, where }: LocationChart
 
   const { series, ticks, unit } = useMemo(() => {
     // Periods are aligned to the interval server-side, so the union of period starts is the axis.
+    // ISO-8601 with a fixed offset sorts chronologically, but the comparator is explicit rather
+    // than relying on the default's string coercion.
     const allPeriods = [
       ...new Set(aggregates.flatMap((s) => s.points.map((p) => p.periodStart))),
-    ].sort();
+    ].sort((a, b) => a.localeCompare(b));
 
     const built: ChartSeries[] = aggregates.map((s, index) => {
       const byPeriod = new Map(s.points.map((p) => [p.periodStart, p.average]));
@@ -64,7 +66,37 @@ export default function LocationChart({ metric, interval, where }: LocationChart
   }, [aggregates, metric]);
 
   const label = METRICS.find((m) => m.value === metric)?.label ?? metric;
+
+  const emptyState = loading ? (
+    <EmptyPanel title="LOADING" detail={`Fetching ${label} aggregates.`} />
+  ) : (
+    <EmptyPanel
+      title="NO PERIODS IN RANGE"
+      detail="No readings fall in this window, so there is nothing to aggregate. Widen the range or clear the location filter."
+    />
+  );
   const query = `readingAggregates(metric: ${metric}, interval: ${interval}) · unit ${unit}`;
+
+  let body;
+  if (error) {
+    body = <ErrorPanel error={error} onRetry={() => void refetch()} />;
+  } else if (aggregates.length === 0) {
+    body = emptyState;
+  } else {
+    body = (
+      <>
+        <div className="chart-area">
+          <SteppedChart
+            series={series}
+            ticks={ticks}
+            unit={unit}
+            threshold={chartThreshold(metric)}
+          />
+        </div>
+        <ChartLegend series={series} note={'SERVER-SIDE CAPS · 90 DAYS · 2000 PERIODS'} />
+      </>
+    );
+  }
 
   return (
     <Window
@@ -74,30 +106,7 @@ export default function LocationChart({ metric, interval, where }: LocationChart
       query={query}
     >
       {loading && aggregates.length > 0 && <RefreshBar />}
-      {error ? (
-        <ErrorPanel error={error} onRetry={() => void refetch()} />
-      ) : aggregates.length === 0 ? (
-        loading ? (
-          <EmptyPanel title="LOADING" detail={`Fetching ${label} aggregates.`} />
-        ) : (
-          <EmptyPanel
-            title="NO PERIODS IN RANGE"
-            detail="No readings fall in this window, so there is nothing to aggregate. Widen the range or clear the location filter."
-          />
-        )
-      ) : (
-        <>
-          <div className="chart-area">
-            <SteppedChart
-              series={series}
-              ticks={ticks}
-              unit={unit}
-              threshold={chartThreshold(metric)}
-            />
-          </div>
-          <ChartLegend series={series} note={'SERVER-SIDE CAPS · 90 DAYS · 2000 PERIODS'} />
-        </>
-      )}
+      {body}
     </Window>
   );
 }

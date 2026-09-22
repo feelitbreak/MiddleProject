@@ -18,7 +18,7 @@ function numberCell(value: number | null, breached: boolean, digits = 0) {
   return <td className={breached ? 'tabular out-of-band' : 'tabular'}>{value.toFixed(digits)}</td>;
 }
 
-export default function ExplorerPage({ controls }: ExplorerPageProps) {
+export default function ExplorerPage({ controls }: Readonly<ExplorerPageProps>) {
   const [pageSize, setPageSize] = useState(25);
   const { filter, readingWhere } = controls;
 
@@ -39,8 +39,86 @@ export default function ExplorerPage({ controls }: ExplorerPageProps) {
   // Identity columns collapse into a banner when the filter already fixes them for every row.
   const singleLocation = filter.location !== null;
   const newest = nodes[0]?.collectedAt ?? null;
-  const oldest = nodes.length > 0 ? (nodes[nodes.length - 1]?.collectedAt ?? null) : null;
+  const oldest = nodes.at(-1)?.collectedAt ?? null;
   const hasNextPage = pageInfo?.hasNextPage === true;
+
+  const cursorClause =
+    pageInfo?.endCursor == null ? '' : `, after: "${pageInfo.endCursor.slice(0, 24)}…"`;
+  const readingsQuery = `readings(first: ${pageSize}${cursorClause})`;
+
+  const readingsTable = (
+    <div className="scroll-area">
+      <table>
+        <thead>
+          <tr>
+            <th>COLLECTED AT</th>
+            {!singleLocation && <th>LOCATION</th>}
+            {!singleLocation && <th>TYPE</th>}
+            <th>
+              CO2<i className="column-unit">PPM</i>
+            </th>
+            <th>
+              PM2.5<i className="column-unit">UG/M3</i>
+            </th>
+            <th>
+              RH<i className="column-unit">%</i>
+            </th>
+            <th>
+              MOTION<i className="column-unit">STATE</i>
+            </th>
+            <th>
+              ENERGY<i className="column-unit">KWH</i>
+            </th>
+            <th>ID</th>
+          </tr>
+        </thead>
+        <tbody>
+          {nodes.map((reading) => (
+            <tr key={reading.id}>
+              <td className="timestamp-cell">
+                {formatClock(reading.collectedAt)}
+                <i className="timestamp-date">{formatDay(reading.collectedAt)}</i>
+              </td>
+              {!singleLocation && (
+                <td className="location-cell">{reading.sensor.name.toUpperCase()}</td>
+              )}
+              {!singleLocation && <td className="location-cell">{reading.sensor.type}</td>}
+              {numberCell(reading.co2, isBreached('co2', reading.co2))}
+              {numberCell(reading.pm25, isBreached('pm25', reading.pm25))}
+              {numberCell(reading.humidity, isBreached('humidity', reading.humidity))}
+              {reading.motionDetected === null ? (
+                <td className="no-value">&mdash;</td>
+              ) : (
+                <td>{reading.motionDetected ? 'YES' : 'NO'}</td>
+              )}
+              {numberCell(reading.energyKwh, false, 1)}
+              <td className="tabular row-id">{reading.id}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+
+  const emptyState = loading ? (
+    <EmptyPanel title="LOADING" detail="Fetching the first page of readings." />
+  ) : (
+    <EmptyPanel
+      title="NO READINGS IN RANGE"
+      detail="Nothing matches this filter. Widen the range, or clear the location and sensor type."
+      actionLabel="CLEAR ALL"
+      onAction={controls.clear}
+    />
+  );
+
+  let body;
+  if (error) {
+    body = <ErrorPanel error={error} onRetry={() => void refetch()} />;
+  } else if (nodes.length === 0) {
+    body = emptyState;
+  } else {
+    body = readingsTable;
+  }
 
   return (
     <main className="explorer">
@@ -84,7 +162,7 @@ export default function ExplorerPage({ controls }: ExplorerPageProps) {
         title="READINGS"
         className="area-readings"
         tone={error ? 'error' : 'default'}
-        query={`readings(first: ${pageSize}${pageInfo?.endCursor ? `, after: "${pageInfo.endCursor.slice(0, 24)}…"` : ''})`}
+        query={readingsQuery}
       >
         {singleLocation && (
           <div className="scope-banner">
@@ -97,72 +175,7 @@ export default function ExplorerPage({ controls }: ExplorerPageProps) {
         {loading && nodes.length > 0 && <RefreshBar />}
         <ThresholdStrip />
 
-        {error ? (
-          <ErrorPanel error={error} onRetry={() => void refetch()} />
-        ) : nodes.length === 0 ? (
-          loading ? (
-            <EmptyPanel title="LOADING" detail="Fetching the first page of readings." />
-          ) : (
-            <EmptyPanel
-              title="NO READINGS IN RANGE"
-              detail="Nothing matches this filter. Widen the range, or clear the location and sensor type."
-              actionLabel="CLEAR ALL"
-              onAction={controls.clear}
-            />
-          )
-        ) : (
-          <div className="scroll-area">
-            <table>
-              <thead>
-                <tr>
-                  <th>COLLECTED AT</th>
-                  {!singleLocation && <th>LOCATION</th>}
-                  {!singleLocation && <th>TYPE</th>}
-                  <th>
-                    CO2<i className="column-unit">PPM</i>
-                  </th>
-                  <th>
-                    PM2.5<i className="column-unit">UG/M3</i>
-                  </th>
-                  <th>
-                    RH<i className="column-unit">%</i>
-                  </th>
-                  <th>
-                    MOTION<i className="column-unit">STATE</i>
-                  </th>
-                  <th>
-                    ENERGY<i className="column-unit">KWH</i>
-                  </th>
-                  <th>ID</th>
-                </tr>
-              </thead>
-              <tbody>
-                {nodes.map((reading) => (
-                  <tr key={reading.id}>
-                    <td className="timestamp-cell">
-                      {formatClock(reading.collectedAt)}
-                      <i className="timestamp-date">{formatDay(reading.collectedAt)}</i>
-                    </td>
-                    {!singleLocation && (
-                      <td className="location-cell">{reading.sensor.name.toUpperCase()}</td>
-                    )}
-                    {!singleLocation && <td className="location-cell">{reading.sensor.type}</td>}
-                    {numberCell(reading.co2, isBreached('co2', reading.co2))}
-                    {numberCell(reading.pm25, isBreached('pm25', reading.pm25))}
-                    {numberCell(reading.humidity, isBreached('humidity', reading.humidity))}
-                    {reading.motionDetected === null ? (
-                      <td className="no-value">&mdash;</td>
-                    ) : (
-                      <td>{reading.motionDetected ? 'YES' : 'NO'}</td>
-                    )}
-                    {numberCell(reading.energyKwh, false, 1)}
-                    <td className="tabular row-id">{reading.id}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+        {body}
 
         <div className="pager">
           <span className="pager-note">

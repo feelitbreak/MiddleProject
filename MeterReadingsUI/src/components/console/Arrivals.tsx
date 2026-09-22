@@ -16,7 +16,7 @@ const TYPE_LABEL: Record<string, string> = {
   energy: 'ENERGY',
 };
 
-export default function Arrivals({ lastEvent, eventsSeen, rows, now }: ArrivalsProps) {
+export default function Arrivals({ lastEvent, eventsSeen, rows, now }: Readonly<ArrivalsProps>) {
   const lost = rows.filter((row) => row.worst === 'lost');
 
   return (

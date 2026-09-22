@@ -34,7 +34,7 @@ export default function LatestValues({
   refreshing,
   now,
   query,
-}: LatestValuesProps) {
+}: Readonly<LatestValuesProps>) {
   const ageOf = (row: LocationRow) =>
     row.oldestCollectedAt === null ? '--' : formatAge(row.oldestCollectedAt, now);
 

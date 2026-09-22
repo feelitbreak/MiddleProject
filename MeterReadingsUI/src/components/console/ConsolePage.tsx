@@ -18,7 +18,7 @@ interface ConsolePageProps {
   live: LiveReadings;
 }
 
-export default function ConsolePage({ controls, live }: ConsolePageProps) {
+export default function ConsolePage({ controls, live }: Readonly<ConsolePageProps>) {
   const now = useNow();
   const { filter, readingWhere, aggregateWhere } = controls;
 

@@ -24,7 +24,7 @@ export default function Window({
   query,
   className,
   children,
-}: WindowProps) {
+}: Readonly<WindowProps>) {
   return (
     <section className={className ? `window ${className}` : 'window'}>
       <div className={`window-titlebar${TONE_CLASS[tone]}`}>
