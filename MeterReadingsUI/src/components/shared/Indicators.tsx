@@ -54,7 +54,7 @@ export function ThresholdStrip() {
   const { co2Ppm, pm25, humidityPercent } = ALERT_THRESHOLDS;
   return (
     <div className="threshold-strip">
-      ALERT THRESHOLDS &mdash; OURS, NOT THE GATEWAY&apos;S &mdash;
+      <span>ALERT THRESHOLDS &mdash; OURS, NOT THE GATEWAY&apos;S &mdash;</span>
       <span>
         CO2 <b className="threshold-value">&gt;{co2Ppm.max} PPM</b>
       </span>

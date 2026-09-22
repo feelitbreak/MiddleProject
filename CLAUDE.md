@@ -91,8 +91,11 @@ preference for platform and library built-ins over bespoke utilities.
 - Verify with `npm run format:check && npm run lint && npm run typecheck && npm test && npm run build`.
 - Class names describe what they mark (`.filter-label`, not `.k`). Every grid track is a fraction
   or a fixed size: an `auto` track spanned by a scrolling panel grows to its full content height.
-- `eslint-plugin-sonarjs` is in the ESLint config so the SonarQube rules CI enforces also run
-  locally, the same reason every .NET project references `SonarAnalyzer.CSharp`.
+- `eslint-plugin-sonarjs` and `eslint-plugin-react` are in the ESLint config so the SonarQube rules
+  CI enforces also run locally, the same reason every .NET project references `SonarAnalyzer.CSharp`.
+  `eslint-plugin-react` predates ESLint 10, so it needs two accommodations that are load-bearing:
+  a `package.json` `overrides` entry to relax its peer range, and a pinned `settings.react.version`
+  because its `detect` probe calls `context.getFilename()`, which ESLint 10 removed.
 - `@typescript-eslint/no-deprecated` is a **warning, not an error**. A deprecation never fails a
   build: it would block a release or a rollback over advisory information. CI reports it in the job
   summary and imports it into SonarQube instead.
