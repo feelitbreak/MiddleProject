@@ -77,11 +77,32 @@ rather than fixing it blind.
 
 ## Frontend (React + TypeScript)
 
-Not yet present. When added: strict TypeScript, no `any`, function components with hooks, and the
-same preference for platform and library built-ins over bespoke utilities.
+[MeterReadingsUI](MeterReadingsUI) -- see its README for the design system and the live-update
+seam. Vite, strict TypeScript with no `any`, function components with hooks, and the same
+preference for platform and library built-ins over bespoke utilities.
+
+- Relative imports, no path aliases and no barrel files. PascalCase components, camelCase
+  everything else.
+- GraphQL types are generated from the gateway's committed schema and committed here; CI fails on a
+  diff. Never hand-write a type the schema already describes.
+- One filter object drives every panel. No state library: Apollo's cache and one `useState` cover it.
+- Alert thresholds are the UI's own invention and live in one file; any surface that judges a value
+  prints the number it used.
+- Verify with `npm run format:check && npm run lint && npm run typecheck && npm test && npm run build`.
+- Class names describe what they mark (`.filter-label`, not `.k`). Every grid track is a fraction
+  or a fixed size: an `auto` track spanned by a scrolling panel grows to its full content height.
+- `eslint-plugin-sonarjs` and `eslint-plugin-react` are in the ESLint config so the SonarQube rules
+  CI enforces also run locally, the same reason every .NET project references `SonarAnalyzer.CSharp`.
+  `eslint-plugin-react` predates ESLint 10, so it needs two accommodations that are load-bearing:
+  a `package.json` `overrides` entry to relax its peer range, and a pinned `settings.react.version`
+  because its `detect` probe calls `context.getFilename()`, which ESLint 10 removed.
+- `@typescript-eslint/no-deprecated` is a **warning, not an error**. A deprecation never fails a
+  build: it would block a release or a rollback over advisory information. CI reports it in the job
+  summary and imports it into SonarQube instead.
+- Same rule for `npm audit`: CI reports advisories and nothing enforces a severity threshold.
 
 ## Local stack
 
 `docker compose up -d` from the repo root. Postgres `meterdb` (`postgres`/`postgres`, local only),
 Kafka UI on 8070, Prometheus 9090, Grafana 3000, injector 8082, processor 8084,
-gateway 8086, notifications 8088.
+gateway 8086, notifications 8088, UI 8090.

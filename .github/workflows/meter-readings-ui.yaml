@@ -1,0 +1,90 @@
+name: Meter Readings UI - Build & Publish
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'MeterReadingsUI/**'
+      - 'GraphQLGatewayService/src/Api/schema.graphql'
+  pull_request:
+    paths:
+      - 'MeterReadingsUI/**'
+      - 'GraphQLGatewayService/src/Api/schema.graphql'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./MeterReadingsUI
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          # Sonar reads history to attribute issues to the commit that introduced them.
+          fetch-depth: 0
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version-file: 'MeterReadingsUI/.nvmrc'
+          cache: npm
+          cache-dependency-path: MeterReadingsUI/package-lock.json
+      - name: Install
+        run: npm ci
+      - name: Format
+        run: npm run format:check
+      # Errors fail this step; warnings (deprecations among them) are reported and do not. A
+      # deprecation must never block a release or a rollback of code that already works.
+      - name: Lint
+        run: npm run lint
+      - name: Collect lint warnings for Sonar
+        if: always()
+        run: npm run lint:report || true
+      - name: Summarise lint warnings
+        if: always()
+        run: node scripts/lint-summary.mjs
+      # Reports only. An advisory can be published against an unchanged commit, so this must never
+      # be what stops a release going out or a known-good tag being redeployed.
+      - name: Audit dependencies
+        if: always()
+        run: npm run audit
+      - name: Summarise audit
+        if: always()
+        run: npm run audit:summary
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Test
+        run: npm test
+      - name: Build
+        run: npm run build
+      # The generated types are committed, so a gateway schema change that nobody regenerated
+      # against fails here rather than at runtime.
+      - name: Verify the committed types match the gateway schema
+        run: |
+          npm run codegen
+          git diff --exit-code -- src/graphql/generated
+      - name: SonarQube scan
+        uses: SonarSource/sonarqube-scan-action@v6
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN_METER_READINGS_UI }}
+        with:
+          projectBaseDir: MeterReadingsUI
+
+  publish:
+    if: github.ref == 'refs/heads/main'
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Login to Docker Hub
+        uses: docker/login-action@v4
+        with:
+          username: ${{ vars.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+      - name: Build and Push
+        uses: docker/build-push-action@v7
+        with:
+          context: '{{defaultContext}}:MeterReadingsUI'
+          push: true
+          tags: ${{ vars.DOCKERHUB_REPOSITORY }}:meter-readings-ui

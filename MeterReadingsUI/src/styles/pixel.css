@@ -1,0 +1,1209 @@
+/* Self-hosted rather than loaded from Google Fonts: the stylesheet request there is
+   render-blocking and chains a second request to fonts.gstatic.com, which was the largest single
+   contributor to first contentful paint. Latin subset only, 7.6 kB. Licence in public/fonts/OFL.txt. */
+@font-face {
+  font-family: 'Handjet';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('/fonts/handjet-latin.woff2') format('woff2');
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+    U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/* Meter Readings UI — Pixel Workstation design system.
+
+   Two colour families, kept apart on purpose:
+   - CHROME is desaturated. It never appears on a reading.
+   - STATE is saturated and only ever lands on data: a cell, a chip, a chart series.
+   Purple is reserved for one thing only: what the viewer has filtered to. */
+
+:root {
+  /* chrome */
+  --desk: #fff4c4;
+  --face: #fffdf6;
+  --chrome: #ffd3e0;
+  --chrome-strong: #ffb8ce;
+  --ink: #2a2140;
+  --ink-soft: #6e6485;
+  --line: #2a2140;
+  --dot: rgba(42, 33, 64, 0.13);
+
+  /* state — data only */
+  --mint: #7fdcaf;
+  --mint-deep: #0f7a52;
+  --butter: #ffd24a;
+  --butter-deep: #8a6200;
+  --blush: #ff8fa9;
+  --blush-deep: #b3234c;
+  --lilac: #b9a9f0;
+  --lilac-deep: #4e3ca8;
+
+  /* sensor-type identity — independent of every other role */
+  --type-air: #7fdcaf;
+  --type-motion: #ffc2d3;
+  --type-energy: #ffd24a;
+
+  --border-width: 3px;
+  --gap: 26px;
+  --shadow: 5px 5px 0 rgba(42, 33, 64, 0.82);
+  --shadow-small: 3px 3px 0 var(--line);
+
+  /* Handjet is narrow, so every size here runs larger than a normal UI face would. */
+  --pixel: 'Handjet', ui-monospace, monospace;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  background: var(--desk);
+  color: var(--ink);
+  font-family: var(--pixel);
+  font-weight: 500;
+  background-image: radial-gradient(var(--dot) 1px, transparent 1px);
+  background-size: 7px 7px;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+
+select,
+input {
+  font: inherit;
+  color: inherit;
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* The shell is exactly the viewport: panels scroll inside themselves rather than growing the page. */
+#root {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ---------- scrollbars ----------
+   Same vocabulary as every other control: hard edges, a 3px ink border, no radius anywhere.
+   Firefox gets the colours only; the pixel arrows and grip are WebKit-specific. */
+/* Setting the standard properties makes Chrome ignore every ::-webkit-scrollbar rule below, so
+   they are scoped to engines that have no pseudo-element support -- Firefox gets the colours, and
+   WebKit keeps the pixel arrows and grip. */
+@supports not selector(::-webkit-scrollbar) {
+  * {
+    scrollbar-width: auto;
+    scrollbar-color: var(--chrome-strong) var(--desk);
+  }
+}
+
+::-webkit-scrollbar {
+  width: 17px;
+  height: 17px;
+}
+
+::-webkit-scrollbar-track {
+  background-color: var(--desk);
+  background-image: radial-gradient(var(--dot) 1px, transparent 1px);
+  background-size: 5px 5px;
+  border-left: 3px solid var(--line);
+  border-top: 3px solid var(--line);
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: var(--chrome-strong);
+  border: 3px solid var(--line);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--blush);
+}
+
+::-webkit-scrollbar-thumb:active {
+  background-color: var(--lilac);
+}
+
+/* Stepped arrows, drawn pixel by pixel rather than as a glyph. */
+::-webkit-scrollbar-button:single-button {
+  background-color: var(--chrome-strong);
+  border: 3px solid var(--line);
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 9px 9px;
+  display: block;
+  height: 17px;
+  width: 17px;
+}
+
+::-webkit-scrollbar-button:single-button:hover {
+  background-color: var(--blush);
+}
+
+::-webkit-scrollbar-button:single-button:vertical:decrement {
+  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 9 9" shape-rendering="crispEdges"><g fill="%232a2140"><rect x="4" y="2" width="1" height="1"/><rect x="3" y="3" width="3" height="1"/><rect x="2" y="4" width="5" height="1"/><rect x="1" y="5" width="7" height="1"/></g></svg>');
+}
+
+::-webkit-scrollbar-button:single-button:vertical:increment {
+  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 9 9" shape-rendering="crispEdges"><g fill="%232a2140"><rect x="1" y="3" width="7" height="1"/><rect x="2" y="4" width="5" height="1"/><rect x="3" y="5" width="3" height="1"/><rect x="4" y="6" width="1" height="1"/></g></svg>');
+}
+
+::-webkit-scrollbar-button:single-button:horizontal:decrement {
+  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 9 9" shape-rendering="crispEdges"><g fill="%232a2140"><rect x="2" y="4" width="1" height="1"/><rect x="3" y="3" width="1" height="3"/><rect x="4" y="2" width="1" height="5"/><rect x="5" y="1" width="1" height="7"/></g></svg>');
+}
+
+::-webkit-scrollbar-button:single-button:horizontal:increment {
+  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 9 9" shape-rendering="crispEdges"><g fill="%232a2140"><rect x="3" y="1" width="1" height="7"/><rect x="4" y="2" width="1" height="5"/><rect x="5" y="3" width="1" height="3"/><rect x="6" y="4" width="1" height="1"/></g></svg>');
+}
+
+::-webkit-scrollbar-corner {
+  background: var(--desk);
+  border-left: 3px solid var(--line);
+  border-top: 3px solid var(--line);
+}
+
+/* ---------- menu bar ---------- */
+.menubar {
+  height: 42px;
+  background: var(--face);
+  border-bottom: var(--border-width) solid var(--line);
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  flex: none;
+  z-index: 2;
+}
+
+.menubar-item {
+  font-size: 15px;
+  font-weight: 600;
+  padding: 9px 13px;
+  letter-spacing: 0.07em;
+}
+
+.menubar-logo {
+  background: var(--line);
+  color: var(--face);
+  margin-right: 10px;
+  letter-spacing: 0.13em;
+}
+
+.menubar-route {
+  cursor: pointer;
+  background: transparent;
+}
+
+.menubar-route[aria-current='page'] {
+  background: var(--chrome);
+  box-shadow: inset 0 -3px 0 var(--line);
+}
+
+.menubar-spacer {
+  flex: 1;
+}
+
+.status-group {
+  display: flex;
+  align-items: center;
+  margin-left: auto;
+}
+
+.status-item {
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 11px;
+  color: var(--ink-soft);
+  letter-spacing: 0.05em;
+}
+
+.status-dot {
+  width: 10px;
+  height: 10px;
+  background: var(--mint-deep);
+}
+
+.status-dot-warning {
+  background: var(--butter-deep);
+}
+
+.status-dot-bad {
+  background: var(--blush-deep);
+}
+
+.menubar-clock {
+  font-size: 24px;
+  font-weight: 600;
+  padding-left: 8px;
+}
+
+/* ---------- window chrome ---------- */
+.window {
+  border: var(--border-width) solid var(--line);
+  background: var(--face);
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+}
+
+.window-titlebar {
+  height: 30px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 8px;
+  border-bottom: var(--border-width) solid var(--line);
+  background: var(--chrome);
+  flex: none;
+}
+
+.window-titlebar-filter {
+  background: var(--lilac);
+}
+
+.window-titlebar-warning {
+  background: var(--butter);
+}
+
+.window-titlebar-error {
+  background: var(--blush);
+}
+
+.window-button {
+  width: 13px;
+  height: 13px;
+  border: 2px solid var(--line);
+  background: var(--face);
+  flex: none;
+}
+
+.window-title {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  white-space: nowrap;
+}
+
+.titlebar-lines {
+  flex: 1;
+  height: 9px;
+  min-width: 10px;
+  opacity: 0.38;
+  background: repeating-linear-gradient(0deg, var(--line) 0 2px, transparent 2px 4px);
+}
+
+.window-body {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Each window names the query it runs, so the panels are self-describing. */
+.query-line {
+  font-size: 14px;
+  color: var(--ink-soft);
+  padding: 8px 12px;
+  letter-spacing: 0.03em;
+  border-bottom: 2px dotted rgba(42, 33, 64, 0.28);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: none;
+}
+
+.scroll-area {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+/* ---------- filter controls ---------- */
+.filter-grid {
+  padding: 11px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.filter-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.filter-label {
+  font-size: 13px;
+  color: var(--ink-soft);
+  width: 78px;
+  flex: none;
+  letter-spacing: 0.08em;
+}
+
+.filter-input {
+  flex: 1;
+  border: 2px solid var(--line);
+  background: #fff;
+  padding: 4px 8px;
+  font-size: 18px;
+  font-weight: 600;
+  display: flex;
+  justify-content: space-between;
+  gap: 6px;
+  min-width: 0;
+}
+
+.filter-input-active {
+  background: var(--lilac);
+}
+
+.filter-input:focus-within {
+  outline: 3px solid var(--lilac-deep);
+  outline-offset: 1px;
+}
+
+.filter-input select,
+.filter-input input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  outline: none;
+  font-size: 18px;
+  font-weight: 600;
+  font-family: var(--pixel);
+}
+
+.segmented {
+  display: flex;
+  border: 2px solid var(--line);
+  margin-top: 2px;
+  /* A fieldset defaults to min-inline-size: min-content, which stops it shrinking inside the
+     filter column. The rest of its UA box is covered by the reset. */
+  min-inline-size: 0;
+  padding: 0;
+}
+
+.segmented-option {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: center;
+  padding: 7px 0;
+  border-right: 2px solid var(--line);
+  background: #fff;
+  letter-spacing: 0.07em;
+  cursor: pointer;
+}
+
+.segmented-option:last-child {
+  border-right: 0;
+}
+
+.segmented-option-active {
+  background: var(--lilac);
+}
+
+.button {
+  font-size: 13px;
+  font-weight: 600;
+  background: var(--chrome-strong);
+  border: 2px solid var(--line);
+  padding: 7px 11px;
+  box-shadow: var(--shadow-small);
+  display: inline-block;
+  letter-spacing: 0.08em;
+}
+
+.button-ghost {
+  background: var(--face);
+}
+
+.button:disabled,
+.button[aria-disabled='true'] {
+  background: var(--face);
+  color: var(--ink-soft);
+  box-shadow: none;
+  cursor: default;
+}
+
+.filter-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 10px 12px;
+}
+
+.filter-chip {
+  font-size: 12px;
+  background: var(--lilac);
+  border: 2px solid var(--line);
+  padding: 4px 7px;
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  letter-spacing: 0.05em;
+}
+
+.filter-chip-remove {
+  padding: 0 0 0 4px;
+}
+
+/* ---------- tables ---------- */
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+thead th {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-soft);
+  text-align: right;
+  letter-spacing: 0.09em;
+  padding: 9px 11px;
+  border-bottom: 2px solid var(--line);
+  white-space: nowrap;
+  vertical-align: bottom;
+  position: sticky;
+  top: 0;
+  background: var(--face);
+}
+
+thead th:first-child,
+thead th:last-child {
+  text-align: left;
+}
+
+.column-unit {
+  display: block;
+  font-style: normal;
+  font-size: 12px;
+  opacity: 0.6;
+  margin-top: 2px;
+  letter-spacing: 0.07em;
+}
+
+tbody td {
+  padding: 0 11px;
+  height: 54px;
+  border-bottom: 2px dotted rgba(42, 33, 64, 0.22);
+  text-align: right;
+  font-size: 34px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+tbody td:first-child {
+  text-align: left;
+}
+
+tbody tr:hover {
+  background: rgba(185, 169, 240, 0.18);
+}
+
+.location-cell {
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+}
+
+.location-types {
+  display: block;
+  font-style: normal;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ink-soft);
+  margin-top: 3px;
+  letter-spacing: 0.07em;
+}
+
+.no-value {
+  color: rgba(42, 33, 64, 0.22);
+}
+
+/* Out of band tints the value, not the cell: filtered to one high sensor, a filled cell becomes
+   an unbroken block of colour down the whole column. */
+.out-of-band {
+  color: var(--blush-deep);
+}
+
+.stale-value {
+  color: var(--butter-deep);
+}
+
+.row-id {
+  font-size: 16px;
+  color: var(--ink-soft);
+}
+
+.timestamp-cell {
+  font-size: 19px;
+  text-align: left;
+}
+
+.timestamp-date {
+  display: block;
+  font-style: normal;
+  font-size: 12px;
+  color: var(--ink-soft);
+  margin-top: 2px;
+}
+
+/* ---------- status chips ---------- */
+
+/* Value band. Always carries a word, so colour is never the only signal. */
+.band-chip {
+  font-size: 13px;
+  font-weight: 600;
+  border: 2px solid currentColor;
+  padding: 4px 8px;
+  display: inline-block;
+  letter-spacing: 0.08em;
+}
+
+.band-chip-ok {
+  color: var(--mint-deep);
+}
+
+.band-chip-breached {
+  color: var(--blush-deep);
+}
+
+.band-chip-limit {
+  font-size: 11px;
+  font-weight: 500;
+  opacity: 0.8;
+  margin-left: 5px;
+}
+
+/* Feed age. Separate from the band: a sensor can be stale and out of band at once. */
+.feed-chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 9px;
+  padding: 5px 10px;
+  letter-spacing: 0.08em;
+}
+
+.feed-chip-live {
+  color: var(--mint-deep);
+}
+
+.feed-chip-stale {
+  color: var(--butter-deep);
+  background: var(--butter);
+}
+
+.feed-chip-lost {
+  color: var(--blush-deep);
+  background: var(--blush);
+}
+
+.feed-chip-word {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.feed-chip-age {
+  font-size: 24px;
+  font-weight: 700;
+}
+
+/* The thresholds are the app's own, so any surface that judges a value prints them. */
+.threshold-strip {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 7px 12px;
+  background: var(--desk);
+  border-bottom: 2px solid var(--line);
+  font-size: 12px;
+  color: var(--ink-soft);
+  letter-spacing: 0.05em;
+  flex: none;
+}
+
+.threshold-value {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.threshold-note {
+  margin-left: auto;
+}
+
+/* ---------- pager ---------- */
+.pager {
+  margin-top: auto;
+  border-top: var(--border-width) solid var(--line);
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 8px 12px;
+  background: var(--desk);
+  flex: none;
+}
+
+.pager-note {
+  font-size: 13px;
+  color: var(--ink-soft);
+  flex: 1;
+  letter-spacing: 0.05em;
+}
+
+/* ---------- aggregate by sensor type ---------- */
+.type-card {
+  padding: 12px 14px;
+  border-bottom: var(--border-width) solid var(--line);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  justify-content: center;
+}
+
+.type-card:last-child {
+  border-bottom: 0;
+}
+
+.type-card-air {
+  background: var(--type-air);
+}
+
+.type-card-motion {
+  background: var(--type-motion);
+}
+
+.type-card-energy {
+  background: var(--type-energy);
+}
+
+.type-name {
+  font-size: 14px;
+  font-weight: 600;
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  letter-spacing: 0.09em;
+}
+
+.type-unit {
+  font-weight: 500;
+}
+
+.type-value {
+  font-size: 40px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.type-meta {
+  font-size: 13px;
+  opacity: 0.75;
+  letter-spacing: 0.06em;
+}
+
+.sensor-dots {
+  display: flex;
+  gap: 5px;
+  margin-top: 4px;
+}
+
+.sensor-dot {
+  width: 10px;
+  height: 10px;
+  border: 2px solid var(--line);
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.sensor-dot-lost {
+  background: var(--blush);
+}
+
+/* ---------- arrivals ---------- */
+.arrival {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 11px 12px;
+  border-bottom: 2px dotted rgba(42, 33, 64, 0.22);
+  font-size: 22px;
+  font-weight: 600;
+}
+
+.arrival-fresh {
+  background: var(--mint);
+}
+
+.arrival-location {
+  font-size: 14px;
+  flex: 1;
+  letter-spacing: 0.07em;
+}
+
+.arrival-age {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ink-soft);
+  letter-spacing: 0.06em;
+}
+
+/* ---------- messages, empty and error states ---------- */
+.message {
+  padding: 12px;
+  border-top: var(--border-width) solid var(--line);
+  flex: none;
+}
+
+.message-error {
+  background: var(--blush);
+}
+
+.message-warning {
+  background: var(--butter);
+}
+
+.message-heading {
+  font-size: 14px;
+  font-weight: 700;
+  margin-bottom: 5px;
+  letter-spacing: 0.08em;
+}
+
+.message-error .message-heading {
+  color: var(--blush-deep);
+}
+
+.message-warning .message-heading {
+  color: var(--butter-deep);
+}
+
+.message-body {
+  font-size: 17px;
+  line-height: 1.4;
+}
+
+.message-meta {
+  font-size: 12px;
+  font-weight: 500;
+  margin-top: 5px;
+  opacity: 0.78;
+  letter-spacing: 0.05em;
+}
+
+.empty-state {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 15px;
+  padding: 28px;
+  text-align: center;
+  min-height: 0;
+}
+
+.empty-title {
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+}
+
+.empty-title-error {
+  color: var(--blush-deep);
+}
+
+.empty-detail {
+  font-size: 17px;
+  color: var(--ink-soft);
+  max-width: 38ch;
+  line-height: 1.45;
+}
+
+/* Refetching never blanks a panel: the values stay and only this strip moves. */
+.refresh-bar {
+  /* <output> is inline by default. */
+  display: block;
+  height: 9px;
+  border-bottom: 2px solid var(--line);
+  background: var(--desk);
+  overflow: hidden;
+  flex: none;
+}
+
+.refresh-bar-fill {
+  display: block;
+  height: 100%;
+  width: 34%;
+  background: repeating-linear-gradient(90deg, var(--lilac-deep) 0 6px, var(--lilac) 6px 12px);
+  animation: refresh-march 1.1s linear infinite;
+}
+
+@keyframes refresh-march {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(330%);
+  }
+}
+
+.dimmed {
+  opacity: 0.5;
+}
+
+/* ---------- chart ---------- */
+.chart-area {
+  flex: 1;
+  min-height: 0;
+  padding: 12px 14px 4px;
+}
+
+.chart {
+  width: 100%;
+  height: 100%;
+}
+
+.chart-legend {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  padding: 0 14px 12px;
+  flex-wrap: wrap;
+  flex: none;
+}
+
+.chart-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+}
+
+.chart-legend-swatch {
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--line);
+}
+
+.chart-legend-note {
+  margin-left: auto;
+  color: var(--ink-soft);
+}
+
+/* ---------- page layouts ----------
+   No auto-sized track carries a scrolling panel: an `auto` row that a growing table spans resolves
+   to the table's full height, which is what made this page taller than the viewport after a
+   refetch. Every track here is either a fraction or a fixed size. */
+.console {
+  padding: 22px;
+  display: grid;
+  gap: var(--gap);
+  flex: 1;
+  min-height: 0;
+  grid-template-columns: 292px minmax(0, 1fr) 302px;
+  grid-template-rows: minmax(0, 1fr) 230px;
+  grid-template-areas:
+    'side latest    arrivals'
+    'side aggregate aggregate';
+}
+
+.console-side {
+  grid-area: side;
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+  min-height: 0;
+}
+
+/* The filter sizes to its controls; the type cards take whatever is left. */
+.console-side > .window:first-child {
+  flex: none;
+}
+
+.console-side > .window:last-child {
+  flex: 1;
+  min-height: 0;
+}
+
+.area-latest {
+  grid-area: latest;
+}
+
+.area-arrivals {
+  grid-area: arrivals;
+}
+
+.area-aggregate {
+  grid-area: aggregate;
+}
+
+.explorer {
+  padding: 22px;
+  display: grid;
+  gap: var(--gap);
+  flex: 1;
+  min-height: 0;
+  grid-template-columns: 292px minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+  grid-template-areas: 'side readings';
+}
+
+.explorer-side {
+  grid-area: side;
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+  min-height: 0;
+}
+
+.explorer-side > .window:first-child {
+  flex: none;
+}
+
+.explorer-side > .window:last-child {
+  flex: 1;
+  min-height: 0;
+}
+
+.area-readings {
+  grid-area: readings;
+}
+
+.explorer tbody td {
+  height: 48px;
+  font-size: 26px;
+}
+
+.explorer tbody td.location-cell {
+  font-size: 14px;
+}
+
+/* ---------- summary ---------- */
+.summary-item {
+  padding: 14px;
+  border-bottom: 2px dotted rgba(42, 33, 64, 0.28);
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.summary-item:last-child {
+  border-bottom: 0;
+}
+
+.summary-label {
+  font-size: 12px;
+  color: var(--ink-soft);
+  letter-spacing: 0.07em;
+}
+
+.summary-value {
+  font-size: 34px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.summary-meta {
+  font-size: 12px;
+  opacity: 0.75;
+  letter-spacing: 0.05em;
+}
+
+/* ---------- scope banner ---------- */
+.scope-banner {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 10px 12px;
+  background: var(--lilac);
+  border-bottom: var(--border-width) solid var(--line);
+  font-size: 16px;
+  letter-spacing: 0.08em;
+  flex: none;
+}
+
+.scope-separator {
+  opacity: 0.6;
+}
+
+.scope-note {
+  font-style: normal;
+  margin-left: auto;
+  font-size: 12px;
+  opacity: 0.75;
+}
+
+/* ---------- responsive ---------- */
+@media (max-width: 1100px) {
+  /* The shell stops being viewport-height and the page scrolls as one column. */
+  #root {
+    height: auto;
+    min-height: 100vh;
+    overflow: visible;
+  }
+
+  .console,
+  .explorer {
+    display: flex;
+    flex-direction: column;
+    padding: 16px;
+    gap: 24px;
+    overflow: visible;
+  }
+
+  .console-side,
+  .explorer-side {
+    gap: 24px;
+  }
+
+  .area-latest,
+  .area-readings {
+    min-height: 520px;
+  }
+
+  .area-aggregate {
+    min-height: 300px;
+  }
+
+  .area-arrivals {
+    min-height: 340px;
+  }
+
+  .scroll-area {
+    overflow: visible;
+  }
+}
+
+@media (max-width: 720px) {
+  .menubar {
+    height: auto;
+    flex-wrap: wrap;
+    padding: 0;
+  }
+
+  .menubar-item {
+    font-size: 13px;
+    padding: 10px;
+  }
+
+  .menubar-spacer {
+    display: none;
+  }
+
+  .status-group {
+    width: 100%;
+    border-top: 2px solid var(--line);
+    background: var(--desk);
+  }
+
+  .menubar-clock {
+    margin-left: auto;
+    padding: 6px 10px;
+    font-size: 18px;
+  }
+
+  /* The six-column table cannot hold display numerals at this width: one card per location. */
+  .desktop-only {
+    display: none;
+  }
+
+  .location-cards {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .location-card {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 7px 10px;
+    padding: 12px;
+    border-bottom: 2px dotted rgba(42, 33, 64, 0.22);
+  }
+
+  .card-header {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+  }
+
+  .card-name {
+    font-size: 15px;
+    letter-spacing: 0.06em;
+  }
+
+  .card-types {
+    font-size: 11px;
+    color: var(--ink-soft);
+  }
+
+  .card-flags {
+    grid-column: 1 / -1;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .metric-tile {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 6px;
+    padding: 5px 7px;
+    border: 2px solid var(--line);
+    background: #fff;
+  }
+
+  .metric-label {
+    font-size: 11px;
+    color: var(--ink-soft);
+  }
+
+  .metric-value {
+    font-size: 26px;
+    font-weight: 700;
+    line-height: 1;
+  }
+}
+
+@media (min-width: 721px) {
+  .location-cards {
+    display: none;
+  }
+}

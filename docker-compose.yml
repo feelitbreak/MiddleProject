@@ -71,6 +71,16 @@ services:
         condition: service_healthy
     # No postgres dependency: this service reads no database. It forwards a signal and the browser
     # refetches the gateway.
+  meter_readings_ui:
+    container_name: meter_readings_ui
+    image: feelitbreak/middle_project:meter-readings-ui
+    ports:
+      - 8090:8080
+    depends_on:
+      - graphql_gateway
+      - notification_service
+    # No environment: nginx proxies /graphql and /hubs to the two services by name, so nothing
+    # about the back ends is baked into the bundle at build time.
   postgres:
     container_name: postgres
     image: postgres:18-alpine
