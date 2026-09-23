@@ -1,0 +1,72 @@
+# Rendered into $NGINX_ENVSUBST_OUTPUT_DIR at container start by the base image's entrypoint, so
+# the API keys are a restart away rather than an image rebuild. nginx.conf includes the result.
+server {
+  listen 8080;
+  server_name _;
+  root /usr/share/nginx/html;
+
+  add_header X-Content-Type-Options "nosniff" always;
+  add_header Referrer-Policy "no-referrer" always;
+  add_header X-Frame-Options "DENY" always;
+
+  # Both back ends are proxied under this origin, so the bundle holds no API host and the browser
+  # makes no cross-origin request. vite.config.ts mirrors these two rules for development.
+  location /graphql {
+    proxy_pass http://graphql_gateway:8080/graphql;
+    proxy_http_version 1.1;
+    # $http_host, not $host: $host drops the port, and Nitro's redirect to /graphql/ would then
+    # send the browser to an origin that is not listening.
+    proxy_set_header Host $http_host;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    # Set here rather than in the bundle: the browser never holds the key. proxy_set_header
+    # replaces, so a client cannot smuggle its own.
+    proxy_set_header X-Api-Key "${GRAPHQL_API_KEY}";
+  }
+
+  # SignalR negotiates then upgrades, so this block has to carry the upgrade headers and must not
+  # buffer or time the connection out while the hub is idle between injector polls.
+  location /hubs/ {
+    proxy_pass http://notification_service:8080/hubs/;
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection $connection_upgrade;
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    # One location, so the negotiate POST and the upgrade GET are keyed alike. A key on only the
+    # negotiate fails the upgrade, and the client reports that as a generic connection failure.
+    proxy_set_header X-Api-Key "${NOTIFICATION_API_KEY}";
+    proxy_buffering off;
+    proxy_read_timeout 1h;
+    proxy_send_timeout 1h;
+  }
+
+  location = /hub-monitor { return 301 /hub-monitor/; }
+
+  # The Development-only hub monitor, served through this origin so the page's own relative
+  # /hubs/readings connection picks up the key above.
+  location /hub-monitor/ {
+    proxy_pass http://notification_service:8080/;
+    proxy_http_version 1.1;
+    proxy_set_header Host $http_host;
+    proxy_set_header X-Api-Key "${NOTIFICATION_API_KEY}";
+  }
+
+  # Hashed assets are immutable; index.html must not be, or a deploy serves a stale shell.
+  location /assets/ {
+    expires 1y;
+    add_header Cache-Control "public, immutable";
+    add_header X-Content-Type-Options "nosniff" always;
+  }
+
+  location / {
+    try_files $uri $uri/ /index.html;
+    add_header Cache-Control "no-cache";
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header Referrer-Policy "no-referrer" always;
+    add_header X-Frame-Options "DENY" always;
+    # Scoped to the app, which loads nothing off-origin: the font is self-hosted and the two back
+    # ends are same-origin. Not applied to /hub-monitor/, which pulls SignalR from a CDN.
+    add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self' ws: wss:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'" always;
+  }
+}

@@ -60,7 +60,7 @@ public static class ReadingEndpoints
     /// <summary>Maps every read endpoint.</summary>
     public static WebApplication MapReadingEndpoints(this WebApplication app)
     {
-        var readings = app.MapGroup("/api/readings").WithTags("Readings");
+        var readings = app.MapGroup("/api/readings").WithTags("Readings").RequireAuthorization();
 
         readings
             .MapGet(
@@ -133,6 +133,8 @@ public static class ReadingEndpoints
                 async (ISender sender, CancellationToken cancellationToken) =>
                     (await sender.SendAsync(new GetSensorsQuery(), cancellationToken)).ToHttpResult()
             )
+            // Mapped on the app rather than the readings group, so it needs its own guard.
+            .RequireAuthorization()
             .WithTags("Sensors")
             .WithName("GetSensors")
             .WithSummary("Lists the sensor catalogue.")

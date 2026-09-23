@@ -8,24 +8,9 @@ rate-limits, fails and returns corrupted bodies at random — buffers each readi
 persists and aggregates it in PostgreSQL, and shows it on a dashboard that updates as readings
 land. Everything runs from one `docker compose up -d`.
 
-The interesting problem is not the data, which is synthetic. It is keeping a pipeline honest when
-the thing feeding it is not: retrying without amplifying, staying idempotent under redelivery, and
-never showing a number that stopped being true.
-
-## Why it is shaped this way
-
-The architecture answers a set of fixed constraints, which is worth knowing before asking why a
-piece exists:
-
-- **GraphQL is mandatory**, and so is a **REST API** — hence a GraphQL gateway serving the
-  dashboard and a plain REST query API on the processor for operators.
-- **A message queue is mandatory** as the buffer between ingestion and persistence. Kafka, so the
-  processor can be slow or absent without the injector noticing.
-- **Real-time updates** to the browser, over SignalR.
-- **Each service is independently deployable**, with its own CI pipeline and Docker image, and
-  **shares no assemblies with any other**. Where two services need the same shape, each carries its
-  own copy — a duplicated contract is cheaper than a coupled build.
-- Latest .NET, data persisted to a database, structured logging, and unit plus integration tests.
+Fixed constraints explain most of the shape: GraphQL and a REST API both mandatory, a message queue
+between ingestion and persistence, real-time updates over SignalR, latest .NET, and every service
+independently deployable with its own pipeline and no shared assemblies.
 
 ## Services
 
@@ -42,10 +27,10 @@ WeakApp API --(HTTP poll)--> DataInjectorService --(Kafka: meter-readings)--> Da
 | Service | Role | Ports (host) |
 |---|---|---|
 | [`weak_app`](WeakApp) | The unstable external API being consumed | 8080 |
-| [`data_injector`](DataInjectorService) | Polls WeakApp, publishes readings to Kafka | 8082, 8083 |
-| [`data_processor`](DataProcessorService) | Consumes readings, persists them to PostgreSQL | 8084, 8085 |
-| [`graphql_gateway`](GraphQLGatewayService) | Serves the dashboard's GraphQL API, reading PostgreSQL directly | 8086, 8087 |
-| [`notification_service`](NotificationService) | Pushes "new data, refetch" signals to browsers over SignalR | 8088, 8089 |
+| [`data_injector`](DataInjectorService) | Polls WeakApp, publishes readings to Kafka | 8082 |
+| [`data_processor`](DataProcessorService) | Consumes readings, persists them to PostgreSQL | 8084 |
+| [`graphql_gateway`](GraphQLGatewayService) | Serves the dashboard's GraphQL API, reading PostgreSQL directly | 8086 |
+| [`notification_service`](NotificationService) | Pushes "new data, refetch" signals to browsers over SignalR | 8088 |
 | [`meter_readings_ui`](MeterReadingsUI) | The dashboard: React and TypeScript over the gateway and the hub | 8090 |
 | `postgres` | Reading storage | 5432 |
 | `kafka` | Message queue | 9092 |
@@ -54,9 +39,9 @@ WeakApp API --(HTTP poll)--> DataInjectorService --(Kafka: meter-readings)--> Da
 | `grafana` | Dashboards | 3000 |
 | `watchtower` | Pulls newly published images and restarts the services running them | — |
 
-Bring everything up with `docker compose up -d`. Every service runs from a prebuilt image on Docker
-Hub rather than building locally, so `up` never compiles anything — CI publishes the images and
-watchtower rolls them out.
+Copy `.env.example` to `.env` and fill in the three API keys, then bring everything up with
+`docker compose up -d`. Every service runs from a prebuilt image on Docker Hub rather than building
+locally, so `up` never compiles anything — CI publishes the images and watchtower rolls them out.
 
 Services share no assemblies. Where two of them need the same shape, each carries its own copy —
 the injector and processor duplicate the Kafka message contract, the processor and notification
@@ -70,15 +55,41 @@ The local PostgreSQL is `meterdb` with `postgres`/`postgres` — local developme
 docker compose exec postgres psql -U postgres -d meterdb -c "select sensor_type, count(*) from meter_readings group by 1;"
 ```
 
+## API keys
+
+Every business endpoint requires `X-Api-Key` and answers 401 without it; probes and `/metrics` stay
+anonymous so orchestrators and Prometheus can reach them. nginx injects the key when proxying
+`/graphql` and `/hubs/`, so the browser never holds one. The injector has no key: it exposes no
+business API.
+
+Keys live in `.env` (gitignored, copied from `.env.example`); the real values are repository
+secrets. nginx reads them at container start, so rotating one is a restart.
+
+| Surface | Where |
+|---|---|
+| Processor Swagger, the REST API | <http://localhost:8084/swagger>, key in the **Authorize** box |
+| Nitro, the GraphQL IDE | <http://localhost:8090/graphql> |
+| Hub monitor | <http://localhost:8090/hub-monitor/> |
+| Injector and notification Swagger, probes only | <http://localhost:8082/swagger>, <http://localhost:8088/swagger> |
+
+Nitro and the hub monitor work only through the UI's origin: a browser cannot attach a header to a
+navigation or a WebSocket handshake, so nginx does it for them.
+
+### Running your own changes
+
+`docker-compose.yml` only pulls published images. To run the working tree, and `down` first because
+the pinned `container_name` otherwise leaves the old container on the old image:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.build.yml down && docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
+```
+
 ## CI/CD and branching
 
 Each service and the frontend has its own workflow in [`.github/workflows`](.github/workflows),
-triggered only by changes under its own directory. Every one restores, checks formatting, builds,
-tests with coverage and runs a SonarQube analysis; on `main` it builds a Docker image and pushes it
-to Docker Hub, where watchtower picks it up. Two of them carry an extra gate: the gateway re-exports
-its GraphQL schema and fails on a diff, and the UI regenerates its types from that schema and does
-the same — so a schema change that nobody regenerated against breaks the build rather than the
-dashboard.
+path-filtered to its own directory: restore, format, build, test with coverage, SonarQube, and on
+`main` a Docker Hub push that watchtower rolls out. The gateway also re-exports its GraphQL schema
+and the UI regenerates its types from it, both failing on a diff.
 
 Work happens on `feature/*` branches and lands on `main` through pull requests.
 

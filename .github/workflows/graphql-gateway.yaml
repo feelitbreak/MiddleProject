@@ -52,8 +52,7 @@ jobs:
           /o:"feelitbreak" \
           /d:sonar.token="${{ secrets.SONAR_TOKEN_GRAPHQL_GATEWAY }}" \
           /d:sonar.cs.vscoveragexml.reportsPaths=coverage.xml \
-          /d:sonar.projectBaseDir="$GITHUB_WORKSPACE/GraphQLGatewayService" \
-          /d:sonar.coverage.exclusions="src/Api/Program.cs,src/Api/Extensions/Extensions.cs,src/Api/Endpoints/**,src/Infrastructure/Configuration/DatabaseOptions.cs,src/Infrastructure/Persistence/PostgresFunctions.cs"
+          /d:sonar.projectBaseDir="$GITHUB_WORKSPACE/GraphQLGatewayService"
         dotnet build --no-restore
         dotnet-coverage collect "dotnet test --no-build --verbosity normal" -f xml -o "coverage.xml"
         dotnet-sonarscanner end /d:sonar.token="${{ secrets.SONAR_TOKEN_GRAPHQL_GATEWAY }}"

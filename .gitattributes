@@ -1,1 +1,17 @@
 * text eol=crlf
+
+# `* text` above forces text treatment, which overrides git's binary auto-detection. Large binaries
+# still escape it by their NUL density, but a small compressed one does not: the self-hosted woff2
+# gained 37 bytes of injected CR on every checkout and no browser could decode it.
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.otf binary
+*.eot binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.webp binary
+*.pdf binary

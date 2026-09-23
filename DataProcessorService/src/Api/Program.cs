@@ -39,6 +39,7 @@ public static class Program
             );
 
             builder.Services.AddCorsConfiguration(builder.Configuration);
+            builder.Services.AddApiKeyAuthentication(builder.Configuration);
             builder.Services.AddJsonConfiguration();
             builder.Services.AddSwaggerGenConfiguration();
             builder.Services.AddPersistence(builder.Configuration);
@@ -57,8 +58,14 @@ public static class Program
                 app.UseSwaggerUI();
             }
 
+            // CORS first, so a preflight is answered before authorization: it carries no key.
             app.UseCors("AllowOrigins");
+            app.UseAuthentication();
+            app.UseAuthorization();
+
             app.MapReadingEndpoints();
+
+            // Anonymous on purpose: Prometheus and the orchestrator probes carry no key.
             app.MapPrometheusScrapingEndpoint();
 
             app.MapHealthEndpoints();

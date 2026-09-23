@@ -34,6 +34,12 @@ Applies to every project here — .NET services, the React app when it lands, sc
 - **Never restate the signature.** Nothing on a self-evident parameter or property, no
   `/// Gets the location` on `Location`.
 - **Prose sits near a fifth of the lines.** A file where it approaches half is a defect.
+- **Documentation records what is true, not how it got there.** No rationale for why a change was
+  asked for, no alternatives that were tried and rejected, no debugging stories. A reader who does
+  not need it to use or change the thing does not need it at all.
+- **Answer questions in the conversation, not in the repository.** A question about a decision is
+  answered where it was asked; the repository gets the resulting fact, if any, in a sentence.
+  Adding a section per question is how a README doubles without gaining anything.
 
 ## General
 
@@ -103,7 +109,12 @@ preference for platform and library built-ins over bespoke utilities.
 
 ## Local stack
 
-`docker compose up -d` from the repo root. WeakApp 8080, Postgres `meterdb` (`postgres`/`postgres`,
-local only), Kafka UI on 8070, Prometheus 9090, Grafana 3000, injector 8082, processor 8084,
-gateway 8086, notifications 8088, UI 8090. `watchtower` runs alongside them with no port, pulling
-newly published images.
+`docker compose up -d` from the repo root, after copying `.env.example` to `.env`. WeakApp 8080,
+Postgres `meterdb` (`postgres`/`postgres`, local only), Kafka UI on 8070, Prometheus 9090,
+Grafana 3000, UI 8090, injector 8082, processor 8084, gateway 8086, notifications 8088.
+`watchtower` runs alongside them with no port, pulling newly published images.
+
+Business endpoints require `X-Api-Key`; probes and `/metrics` are anonymous. nginx injects the key
+for `/graphql` and `/hubs/`, so it never reaches the browser, and Swagger's Authorize box supplies
+it for the processor's REST API. Ports stay published because the key is the defence, not the
+absence of a route.
