@@ -1,7 +1,31 @@
 # MiddleProject
 
-A microservices system built around an intentionally unstable external API. See
-[MiddleProject.md](MiddleProject.md) for the full brief.
+A microservices system built around an intentionally unstable external API.
+
+Sensors at a handful of locations report air quality, motion and energy use. The system polls them
+through [WeakApp](https://github.com/nantonov/WeakApp) — a deliberately unreliable upstream that
+rate-limits, fails and returns corrupted bodies at random — buffers each reading through Kafka,
+persists and aggregates it in PostgreSQL, and shows it on a dashboard that updates as readings
+land. Everything runs from one `docker compose up -d`.
+
+The interesting problem is not the data, which is synthetic. It is keeping a pipeline honest when
+the thing feeding it is not: retrying without amplifying, staying idempotent under redelivery, and
+never showing a number that stopped being true.
+
+## Why it is shaped this way
+
+The architecture answers a set of fixed constraints, which is worth knowing before asking why a
+piece exists:
+
+- **GraphQL is mandatory**, and so is a **REST API** — hence a GraphQL gateway serving the
+  dashboard and a plain REST query API on the processor for operators.
+- **A message queue is mandatory** as the buffer between ingestion and persistence. Kafka, so the
+  processor can be slow or absent without the injector noticing.
+- **Real-time updates** to the browser, over SignalR.
+- **Each service is independently deployable**, with its own CI pipeline and Docker image, and
+  **shares no assemblies with any other**. Where two services need the same shape, each carries its
+  own copy — a duplicated contract is cheaper than a coupled build.
+- Latest .NET, data persisted to a database, structured logging, and unit plus integration tests.
 
 ## Services
 
@@ -28,8 +52,11 @@ WeakApp API --(HTTP poll)--> DataInjectorService --(Kafka: meter-readings)--> Da
 | `kafka-cluster-ui` | Kafka topic and consumer group browser | 8070 |
 | `prometheus` | Metrics scraping | 9090 |
 | `grafana` | Dashboards | 3000 |
+| `watchtower` | Pulls newly published images and restarts the services running them | — |
 
-Bring everything up with `docker compose up -d`.
+Bring everything up with `docker compose up -d`. Every service runs from a prebuilt image on Docker
+Hub rather than building locally, so `up` never compiles anything — CI publishes the images and
+watchtower rolls them out.
 
 Services share no assemblies. Where two of them need the same shape, each carries its own copy —
 the injector and processor duplicate the Kafka message contract, the processor and notification
@@ -42,6 +69,18 @@ The local PostgreSQL is `meterdb` with `postgres`/`postgres` — local developme
 ```bash
 docker compose exec postgres psql -U postgres -d meterdb -c "select sensor_type, count(*) from meter_readings group by 1;"
 ```
+
+## CI/CD and branching
+
+Each service and the frontend has its own workflow in [`.github/workflows`](.github/workflows),
+triggered only by changes under its own directory. Every one restores, checks formatting, builds,
+tests with coverage and runs a SonarQube analysis; on `main` it builds a Docker image and pushes it
+to Docker Hub, where watchtower picks it up. Two of them carry an extra gate: the gateway re-exports
+its GraphQL schema and fails on a diff, and the UI regenerates its types from that schema and does
+the same — so a schema change that nobody regenerated against breaks the build rather than the
+dashboard.
+
+Work happens on `feature/*` branches and lands on `main` through pull requests.
 
 ## Observability
 

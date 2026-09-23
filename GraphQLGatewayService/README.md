@@ -2,8 +2,8 @@
 
 The read API the dashboard talks to. It serves a strongly-typed GraphQL schema over the readings
 that [DataProcessorService](../DataProcessorService) has persisted, querying PostgreSQL directly
-rather than proxying that service's REST endpoints. See [../MiddleProject.md](../MiddleProject.md)
-for the brief.
+rather than proxying that service's REST endpoints. See [the repository README](../README.md) for
+how the whole system fits together.
 
 ## Responsibilities
 

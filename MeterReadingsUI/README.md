@@ -3,7 +3,7 @@
 The dashboard the rest of the system exists to feed. React and TypeScript on Vite, reading the
 [GraphQLGatewayService](../GraphQLGatewayService) schema and listening to
 [NotificationService](../NotificationService) for the signal that something changed. See
-[../MiddleProject.md](../MiddleProject.md) for the brief.
+[the repository README](../README.md) for how the whole system fits together.
 
 ## Responsibilities
 

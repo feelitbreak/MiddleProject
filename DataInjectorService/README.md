@@ -1,6 +1,6 @@
 # DataInjectorService
 
-The Data Injector microservice of the [MiddleProject](../MiddleProject.md) system. It polls the
+The Data Injector microservice of the [MiddleProject](../README.md) system. It polls the
 unstable [WeakApp](https://github.com/nantonov/WeakApp) API for meter readings and publishes each
 reading onto a Kafka topic for [DataProcessorService](../DataProcessorService) to consume and
 persist.
@@ -29,6 +29,46 @@ WeakApp API --(HTTP poll)--> DataInjectorService --(Kafka: meter-readings)--> Da
 ```
 
 DataInjectorService only reads from WeakApp and writes to Kafka; it holds no state of its own.
+
+## The upstream contract
+
+WeakApp is a prebuilt third-party binary with a README that lists its routes and nothing else, so
+what it actually returns is recorded here — this service is the only thing in the repository that
+parses it.
+
+`GET /meters`, with `X-Api-Key` on every request, returns a JSON array of readings:
+
+```json
+[
+  { "type": "air_quality", "name": "Kitchen",
+    "payload": { "co2": 812, "pm25": 23, "humidity": 41 } },
+  { "type": "motion", "name": "Hallway", "payload": { "motionDetected": true } },
+  { "type": "energy", "name": "Garage", "payload": { "energy": 12.5 } }
+]
+```
+
+`type` is the discriminator that selects the payload shape; `name` is the location the sensor
+reports from. The three payloads are disjoint, and an unrecognised `type` resolves to
+`UnknownPayload` rather than failing the batch.
+
+Two absences drive design decisions downstream. **There is no timestamp** — `collectedAt` is
+stamped by this service at poll time, which is why two polls of an unchanged value are legitimately
+two rows. And **there is no sensor identifier** — `(name, type)` is the natural key, which is what
+DataProcessorService resolves to a surrogate key.
+
+Its instability is the point of the exercise, and every variant below is handled explicitly rather
+than caught as one generic failure:
+
+| Response | Meaning | Handling |
+|---|---|---|
+| `200` with a reading array | Normal | Deserialize and publish |
+| `429` | Rate limited | Back off for `Retry-After`, or `RateLimitDelaySeconds` when absent. **Not retried** — the next poll is simply later |
+| `5xx` or an unexpected status | Transient fault | Retried by the resilience pipeline; the circuit breaker opens if it persists |
+| `200` with `{"error":"data corrupted"}` | Corrupted body | Skipped. Note it arrives as `200`, so **nothing retries it** — the cycle is recorded as failed and polling resumes |
+| `200` with malformed JSON | Broken body | Same as corrupted |
+
+The health check reports **degraded**, not unhealthy, when WeakApp is unreachable: an upstream that
+is expected to fail should not make this service look broken.
 
 ## Configuration
 
