@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using NotificationService.Authentication;
 using NotificationService.Hubs;
 using NotificationService.Messaging;
 using System.Globalization;
@@ -25,6 +26,9 @@ using System.Threading.Channels;
 public sealed class ReadingsHubTests(KafkaFixture kafka) : IClassFixture<KafkaFixture>
 {
     private static readonly TimeSpan ReceiveTimeout = TimeSpan.FromSeconds(30);
+
+    /// <summary>Long enough to clear the options' minimum length.</summary>
+    private const string TestApiKey = "integration-test-api-key-0123456789ab";
 
     [Fact]
     public async Task Consume_EventPublishedWhileConnected_ReachesTheClient()
@@ -132,10 +136,19 @@ public sealed class ReadingsHubTests(KafkaFixture kafka) : IClassFixture<KafkaFi
                 new Uri(app.Server.BaseAddress, "hubs/readings"),
                 options =>
                 {
+                    // Covers the negotiate. The upgrade needs its own, below: a WebSocketFactory
+                    // owns that request, and these headers never reach it.
+                    options.Headers.Add(ApiKeyAuthenticationHandler.HeaderName, TestApiKey);
+
                     options.HttpMessageHandlerFactory = _ => app.Server.CreateHandler();
                     options.WebSocketFactory = async (context, cancellationToken) =>
-                        await app.Server.CreateWebSocketClient()
-                            .ConnectAsync(context.Uri, cancellationToken);
+                    {
+                        var webSocketClient = app.Server.CreateWebSocketClient();
+                        webSocketClient.ConfigureRequest = request =>
+                            request.Headers[ApiKeyAuthenticationHandler.HeaderName] = TestApiKey;
+
+                        return await webSocketClient.ConnectAsync(context.Uri, cancellationToken);
+                    };
                 }
             )
             .Build();
@@ -200,6 +213,7 @@ public sealed class ReadingsHubTests(KafkaFixture kafka) : IClassFixture<KafkaFi
                         ["Kafka:BootstrapServers"] = bootstrapServers,
                         ["Kafka:ReadingsPersistedTopic"] = topic,
                         ["Kafka:ConsumerGroupId"] = $"notification-service-{Guid.NewGuid():N}",
+                        ["ApiKey:Key"] = TestApiKey,
                     }
                 )
             );

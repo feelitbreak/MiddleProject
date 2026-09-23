@@ -18,7 +18,6 @@ services:
       - WeakApp__ApiKey=supersecret
     ports:
       - 8082:8080
-      - 8083:8081
     depends_on:
       kafka:
         condition: service_healthy
@@ -34,9 +33,11 @@ services:
       # The session time zone is pinned so that date_trunc buckets in UTC rather than local time.
       - Database__ConnectionString=Host=postgres;Port=5432;Database=meterdb;Username=postgres;Password=postgres;Options=-c timezone=UTC
       - Database__ApplyMigrationsOnStartup=true
+      - ApiKey__Key=${PROCESSOR_API_KEY:?set it in .env - see .env.example}
+    # Swagger documents the REST API here, so this port is how you exercise it. The key is what
+    # defends it -- paste it into Swagger's Authorize box.
     ports:
       - 8084:8080
-      - 8085:8081
     depends_on:
       kafka:
         condition: service_healthy
@@ -51,9 +52,11 @@ services:
       # Read-only: DataProcessorService owns this schema and applies its migrations.
       # The session time zone is pinned so that date_trunc buckets in UTC rather than local time.
       - Database__ConnectionString=Host=postgres;Port=5432;Database=meterdb;Username=postgres;Password=postgres;Options=-c timezone=UTC
+      - ApiKey__Key=${GRAPHQL_API_KEY:?set it in .env - see .env.example}
+    # For tooling that can set X-Api-Key, plus probes and metrics. The Nitro IDE is not usable on
+    # this port -- a browser navigation carries no header -- so it is served via the UI's /graphql.
     ports:
       - 8086:8080
-      - 8087:8081
     depends_on:
       postgres:
         condition: service_healthy
@@ -63,9 +66,11 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - Kafka__BootstrapServers=kafka:29092
+      - ApiKey__Key=${NOTIFICATION_API_KEY:?set it in .env - see .env.example}
+    # Swagger for the probes. The hub monitor here cannot reach the hub -- a browser cannot set a
+    # header on a WebSocket handshake -- so use /hub-monitor/ on the UI origin instead.
     ports:
       - 8088:8080
-      - 8089:8081
     depends_on:
       kafka:
         condition: service_healthy
@@ -76,11 +81,14 @@ services:
     image: feelitbreak/middle_project:meter-readings-ui
     ports:
       - 8090:8080
+    environment:
+      # nginx injects these server-side, so nothing about the back ends -- least of all a key --
+      # is baked into the bundle at build time.
+      - GRAPHQL_API_KEY=${GRAPHQL_API_KEY:?set it in .env - see .env.example}
+      - NOTIFICATION_API_KEY=${NOTIFICATION_API_KEY:?set it in .env - see .env.example}
     depends_on:
       - graphql_gateway
       - notification_service
-    # No environment: nginx proxies /graphql and /hubs to the two services by name, so nothing
-    # about the back ends is baked into the bundle at build time.
   postgres:
     container_name: postgres
     image: postgres:18-alpine

@@ -110,14 +110,19 @@ this wrong and the WebSocket handshake fails with a CORS error that never mentio
 
 ## Endpoints
 
-| Endpoint | Purpose |
-|---|---|
-| `/hubs/readings` | The SignalR hub |
-| `GET /health/live` | Liveness: the consumer loop has completed an iteration recently |
-| `GET /health/ready` | Readiness: the consumer owns at least one partition |
-| `GET /metrics` | Prometheus exposition |
-| `GET /` | Hub monitor — Development only |
-| `GET /swagger` | Swagger UI for the probes — Development only |
+| Endpoint | Purpose | Key |
+|---|---|---|
+| `/hubs/readings` | The SignalR hub | required |
+| `GET /health/live` | Liveness: the consumer loop has completed an iteration recently | no |
+| `GET /health/ready` | Readiness: the consumer owns at least one partition | no |
+| `GET /metrics` | Prometheus exposition | no |
+| `GET /` | Hub monitor — Development only | no |
+| `GET /swagger` | Swagger UI for the probes — Development only | no |
+
+`RequireAuthorization()` on `MapHub` covers the negotiate and every transport request alike, which
+is what SignalR needs: it re-authorises each one, so a key accepted only at negotiate fails the
+upgrade. A browser cannot set a header on a WebSocket handshake, so the key comes from the proxy and
+the hub monitor is served at <http://localhost:8090/hub-monitor/>.
 
 Liveness is not "the host is up". A consumer loop that wedges, or one the broker evicted from its
 group, leaves the web host answering requests and accepting WebSocket handshakes while no client
@@ -149,8 +154,9 @@ and a connection-duration histogram, both tagged by transport.
 
 ## Running locally
 
-`docker compose up -d` from the repository root brings up the whole stack; the hub is at
-`http://localhost:8088/hubs/readings`.
+`docker compose up -d` from the repository root brings up the whole stack. The browser reaches the
+hub through the UI's proxy at `http://localhost:8090/hubs/readings`, which injects the API key;
+`http://localhost:8088` serves Swagger for the probes.
 
 Against a Kafka that is already running:
 
@@ -158,8 +164,8 @@ Against a Kafka that is already running:
 dotnet run --project src/NotificationService
 ```
 
-Then open <http://localhost:8088> (or `http://localhost:5005` when running from the CLI) and watch
-the events arrive. Confirm a `readingsChanged` lands per committed batch — one or two per injector
+Then open <http://localhost:8090/hub-monitor/> (or `http://localhost:5005` when running from the
+CLI, where no key is configured) and watch the events arrive. Confirm a `readingsChanged` lands per committed batch — one or two per injector
 poll, never one per reading — and that refetching the gateway immediately afterwards returns the
 rows the event referred to.
 

@@ -36,6 +36,7 @@ public static class Program
             );
 
             builder.Services.AddCorsConfiguration(builder.Configuration);
+            builder.Services.AddApiKeyAuthentication(builder.Configuration);
             builder.Services.AddPersistence(builder.Configuration);
             builder.Services.AddGraphQLApi(builder.Environment);
             builder.Services.AddHealthCheckConfiguration();
@@ -43,7 +44,10 @@ public static class Program
 
             var app = builder.Build();
 
+            // CORS first, so a preflight is answered before authorization: it carries no key.
             app.UseCors("AllowOrigins");
+            app.UseAuthentication();
+            app.UseAuthorization();
 
             app.MapGraphQL()
                 .WithOptions(
@@ -56,8 +60,10 @@ public static class Program
                         // A GET query is cacheable and triggerable by a plain cross-origin link.
                         options.EnableGetRequests = false;
                     }
-                );
+                )
+                .RequireAuthorization();
 
+            // Anonymous on purpose: Prometheus and the orchestrator probes carry no key.
             app.MapPrometheusScrapingEndpoint();
             app.MapHealthEndpoints();
 

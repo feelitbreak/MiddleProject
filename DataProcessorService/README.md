@@ -144,16 +144,20 @@ In `docker-compose.yml` (repo root) this service runs as `data_processor`, point
 
 ## Endpoints
 
-| Endpoint | Purpose |
-|---|---|
-| `GET /api/readings` | Readings newest first, filtered and paged |
-| `GET /api/readings/latest` | The most recent reading for every sensor |
-| `GET /api/readings/aggregate` | One metric aggregated into time periods, grouped by location |
-| `GET /api/sensors` | The sensor catalogue |
-| `GET /health/live` | Liveness — unhealthy if the consumer loop has stalled |
-| `GET /health/ready` | Readiness — database reachable and partitions assigned |
-| `GET /metrics` | Prometheus scraping endpoint |
-| `GET /swagger` | Swagger UI (Development environment only) |
+| Endpoint | Purpose | Key |
+|---|---|---|
+| `GET /api/readings` | Readings newest first, filtered and paged | required |
+| `GET /api/readings/latest` | The most recent reading for every sensor | required |
+| `GET /api/readings/aggregate` | One metric aggregated into time periods, grouped by location | required |
+| `GET /api/sensors` | The sensor catalogue | required |
+| `GET /health/live` | Liveness — unhealthy if the consumer loop has stalled | no |
+| `GET /health/ready` | Readiness — database reachable and partitions assigned | no |
+| `GET /metrics` | Prometheus scraping endpoint | no |
+| `GET /swagger` | Swagger UI (Development environment only) | no |
+
+The query API requires `X-Api-Key`; the probes and metrics stay anonymous. Open
+<http://localhost:8084/swagger>, click **Authorize** and paste the key. Note `/api/sensors` is
+mapped outside the `/api/readings` group, so it carries its own `RequireAuthorization()`.
 
 The liveness probe reports on the consumer loop's last iteration rather than merely on the process
 being up: a wedged or evicted consumer leaves the web host answering requests normally while

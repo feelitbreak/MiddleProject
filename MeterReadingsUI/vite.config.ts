@@ -20,11 +20,13 @@ export default defineConfig(({ mode }) => {
         '/graphql': {
           target: env['GRAPHQL_PROXY_TARGET'] ?? DEFAULT_GRAPHQL_TARGET,
           changeOrigin: true,
+          headers: { 'X-Api-Key': env['GRAPHQL_API_KEY'] ?? '' },
         },
         '/hubs': {
           target: env['HUB_PROXY_TARGET'] ?? DEFAULT_HUB_TARGET,
           changeOrigin: true,
           ws: true,
+          headers: { 'X-Api-Key': env['NOTIFICATION_API_KEY'] ?? '' },
         },
       },
     },

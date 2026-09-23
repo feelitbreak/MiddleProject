@@ -35,6 +35,7 @@ public static class Program
             );
 
             builder.Services.AddCorsConfiguration(builder.Configuration);
+            builder.Services.AddApiKeyAuthentication(builder.Configuration);
             builder.Services.AddSwaggerGenConfiguration();
             builder.Services.AddRealtime();
             builder.Services.AddMessaging(builder.Configuration);
@@ -56,12 +57,18 @@ public static class Program
 
             // Before the hub: the WebSocket handshake is a cross-origin request like any other.
             app.UseCors("AllowOrigins");
+            app.UseAuthentication();
+            app.UseAuthorization();
 
             // One instance only. Scaling out needs a Redis backplane -- a second instance consumes
             // its own share of the partitions and broadcasts to its own connections, so clients
             // attached elsewhere silently never hear about those events rather than failing loudly.
-            app.MapHub<ReadingsHub>("/hubs/readings");
+            //
+            // The guard covers the negotiate and every transport request: SignalR re-authorises
+            // each one, so a key accepted only at negotiate would fail the upgrade.
+            app.MapHub<ReadingsHub>("/hubs/readings").RequireAuthorization();
 
+            // Anonymous on purpose: Prometheus and the orchestrator probes carry no key.
             app.MapPrometheusScrapingEndpoint();
             app.MapHealthEndpoints();
 

@@ -1,5 +1,7 @@
 namespace DataProcessorService.Api.Extensions;
 
+using DataProcessorService.Api.Authentication;
+using DataProcessorService.Api.Configuration;
 using DataProcessorService.Api.HealthChecks;
 using DataProcessorService.Application.Abstractions.Persistence;
 using DataProcessorService.Application.Behaviors;
@@ -16,9 +18,11 @@ using DataProcessorService.Infrastructure.Persistence;
 using DataProcessorService.Infrastructure.Persistence.Queries;
 using DataProcessorService.Infrastructure.Persistence.Repositories;
 using DataProcessorService.Infrastructure.Telemetry;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
+using Microsoft.OpenApi;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using System.Diagnostics.CodeAnalysis;
@@ -63,6 +67,22 @@ public static class Extensions
         {
             options.SwaggerDoc("v1", new() { Title = "DataProcessorService", Version = "v1" });
 
+            options.AddSecurityDefinition(
+                ApiKeyAuthenticationHandler.SchemeName,
+                new OpenApiSecurityScheme
+                {
+                    Type = SecuritySchemeType.ApiKey,
+                    In = ParameterLocation.Header,
+                    Name = ApiKeyAuthenticationHandler.HeaderName,
+                    Description =
+                        "The shared key. In the running stack the reverse proxy supplies it; "
+                        + "paste it here to call these endpoints directly.",
+                }
+            );
+
+            // Per-operation rather than global, so the probes are not documented as requiring a key.
+            options.OperationFilter<ApiKeySecurityOperationFilter>();
+
             var xmlFile = $"{typeof(Extensions).Assembly.GetName().Name}.xml";
             var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
 
@@ -71,6 +91,31 @@ public static class Extensions
                 options.IncludeXmlComments(xmlPath);
             }
         });
+    }
+
+    /// <summary>
+    /// Registers the API-key scheme. The reverse proxy supplies the key, so a browser never
+    /// holds it.
+    /// </summary>
+    public static void AddApiKeyAuthentication(
+        this IServiceCollection services,
+        IConfiguration configuration
+    )
+    {
+        services
+            .AddOptions<ApiKeyOptions>()
+            .Bind(configuration.GetSection(ApiKeyOptions.SectionName))
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
+
+        services
+            .AddAuthentication(ApiKeyAuthenticationHandler.SchemeName)
+            .AddScheme<AuthenticationSchemeOptions, ApiKeyAuthenticationHandler>(
+                ApiKeyAuthenticationHandler.SchemeName,
+                configureOptions: null
+            );
+
+        services.AddAuthorization();
     }
 
     /// <summary>

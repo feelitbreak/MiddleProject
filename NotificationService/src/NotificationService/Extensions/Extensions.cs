@@ -1,5 +1,7 @@
 namespace NotificationService.Extensions;
 
+using Microsoft.AspNetCore.Authentication;
+using NotificationService.Authentication;
 using NotificationService.Configuration;
 using NotificationService.Contracts;
 using NotificationService.HealthChecks;
@@ -16,6 +18,31 @@ using System.Diagnostics.CodeAnalysis;
 [ExcludeFromCodeCoverage(Justification = "Dependency injection wiring, exercised indirectly by every integration test.")]
 public static class Extensions
 {
+    /// <summary>
+    /// Registers the API-key scheme. The reverse proxy supplies the key on the negotiate and on
+    /// every transport request alike, so a browser never holds it.
+    /// </summary>
+    public static void AddApiKeyAuthentication(
+        this IServiceCollection services,
+        IConfiguration configuration
+    )
+    {
+        services
+            .AddOptions<ApiKeyOptions>()
+            .Bind(configuration.GetSection(ApiKeyOptions.SectionName))
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
+
+        services
+            .AddAuthentication(ApiKeyAuthenticationHandler.SchemeName)
+            .AddScheme<AuthenticationSchemeOptions, ApiKeyAuthenticationHandler>(
+                ApiKeyAuthenticationHandler.SchemeName,
+                configureOptions: null
+            );
+
+        services.AddAuthorization();
+    }
+
     /// <summary>
     /// Registers a CORS policy that allows localhost (in development) and any explicitly configured
     /// origins, with credentials.

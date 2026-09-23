@@ -17,8 +17,8 @@ public static class Extensions
     /// <summary>Registers Swagger/OpenAPI generation for the service.</summary>
     public static void AddSwaggerGenConfiguration(this IServiceCollection services)
     {
-        // Controllers bring their own API explorer but minimal APIs do not, so without this the
-        // health probes would never reach Swagger.
+        // Minimal APIs carry no API explorer of their own, so without this the health probes would
+        // never reach Swagger.
         services.AddEndpointsApiExplorer();
 
         services.AddSwaggerGen(options =>

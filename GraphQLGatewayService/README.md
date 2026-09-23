@@ -137,13 +137,22 @@ relax a denial-of-service guard without a code review.
 
 ## Endpoints
 
-| Endpoint | Purpose |
-|---|---|
-| `POST /graphql` | The API |
-| `GET /graphql` | Nitro IDE — Development only |
-| `GET /health/live` | Liveness: is the host answering |
-| `GET /health/ready` | Readiness: database reachable and schema built |
-| `GET /metrics` | Prometheus exposition |
+| Endpoint | Purpose | Key |
+|---|---|---|
+| `POST /graphql` | The API | required |
+| `GET /graphql` | Nitro IDE — Development only | required |
+| `GET /health/live` | Liveness: is the host answering | no |
+| `GET /health/ready` | Readiness: database reachable and schema built | no |
+| `GET /metrics` | Prometheus exposition | no |
+
+Every request to `/graphql` must carry the shared key in `X-Api-Key`; the probes and the metrics
+endpoint stay anonymous so an orchestrator and Prometheus can reach them. One
+`RequireAuthorization()` on `MapGraphQL()` covers the HTTP, WebSocket and Nitro endpoints, because
+the builder it returns fans out to all three.
+
+Nitro is at <http://localhost:8090/graphql>, through the UI's proxy, which injects the key. It is
+not usable on 8086: a browser navigation carries no header, so the page answers 401. That port is
+for callers that can set one.
 
 The probes go through `HealthCheckService` rather than `MapHealthChecks` so they report *which*
 check failed instead of one word. They stay plain HTTP because orchestrator probes cannot speak
@@ -165,8 +174,8 @@ into the result without raising a diagnostic event or passing the error filter.
 
 ## Running locally
 
-`docker compose up -d` from the repository root brings up the whole stack; the gateway is on
-[http://localhost:8086/graphql](http://localhost:8086/graphql).
+`docker compose up -d` from the repository root brings up the whole stack. Nitro is on
+[http://localhost:8090/graphql](http://localhost:8090/graphql), through the UI's proxy.
 
 Against a database that is already running:
 

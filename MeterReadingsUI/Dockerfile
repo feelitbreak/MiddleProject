@@ -11,10 +11,16 @@ RUN npm run build
 FROM nginx:1.27-alpine AS final
 COPY --from=build /app/dist /usr/share/nginx/html
 COPY nginx.conf /etc/nginx/nginx.conf
+COPY nginx.default.conf.template /etc/nginx/templates/default.conf.template
+
+# The entrypoint renders templates here rather than into /etc/nginx/conf.d, which the nginx user
+# cannot write; /tmp is where this image already keeps everything else it writes.
+ENV NGINX_ENVSUBST_OUTPUT_DIR=/tmp/nginx-conf
 
 # Port 8080 matches the other services, and being above 1024 it binds without root.
-RUN touch /tmp/nginx.pid \
-    && chown -R nginx:nginx /tmp/nginx.pid /usr/share/nginx/html /var/cache/nginx
+RUN mkdir -p /tmp/nginx-conf \
+    && touch /tmp/nginx.pid \
+    && chown -R nginx:nginx /tmp/nginx-conf /tmp/nginx.pid /usr/share/nginx/html /var/cache/nginx
 USER nginx
 EXPOSE 8080
 

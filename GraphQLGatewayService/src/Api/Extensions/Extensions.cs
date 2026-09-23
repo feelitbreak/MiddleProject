@@ -1,11 +1,14 @@
 namespace GraphQLGatewayService.Api.Extensions;
 
+using GraphQLGatewayService.Api.Authentication;
+using GraphQLGatewayService.Api.Configuration;
 using GraphQLGatewayService.Api.GraphQL.Errors;
 using GraphQLGatewayService.Api.HealthChecks;
 using GraphQLGatewayService.Infrastructure.Configuration;
 using GraphQLGatewayService.Infrastructure.Persistence;
 using GraphQLGatewayService.Infrastructure.Telemetry;
 using HotChocolate.Types;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
@@ -33,6 +36,31 @@ public static class Extensions
     /// <c>readingAggregates</c> analyses at 2010, so this admits one but not three aliased.
     /// </summary>
     private const int MaxOperationCost = 5_000;
+
+    /// <summary>
+    /// Registers the API-key scheme. The reverse proxy supplies the key, so a browser never
+    /// holds it.
+    /// </summary>
+    public static void AddApiKeyAuthentication(
+        this IServiceCollection services,
+        IConfiguration configuration
+    )
+    {
+        services
+            .AddOptions<ApiKeyOptions>()
+            .Bind(configuration.GetSection(ApiKeyOptions.SectionName))
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
+
+        services
+            .AddAuthentication(ApiKeyAuthenticationHandler.SchemeName)
+            .AddScheme<AuthenticationSchemeOptions, ApiKeyAuthenticationHandler>(
+                ApiKeyAuthenticationHandler.SchemeName,
+                configureOptions: null
+            );
+
+        services.AddAuthorization();
+    }
 
     /// <summary>Registers a CORS policy allowing localhost and any configured origins.</summary>
     public static void AddCorsConfiguration(

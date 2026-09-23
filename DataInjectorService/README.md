@@ -131,7 +131,9 @@ In `docker-compose.yml` (repo root) this service runs as `data_injector`, pointe
 | `GET /swagger` | Swagger UI (Development environment only) |
 
 No inbound business API is exposed — this service is a one-way pipe from WeakApp to Kafka; it does
-not expose endpoints beyond health, metrics and Swagger.
+not expose endpoints beyond health, metrics and Swagger. It carries no API key for the same reason:
+there is nothing here to protect. Adding an inbound endpoint means adopting the siblings'
+`ApiKeyAuthenticationHandler` first.
 
 The probes are mapped as ordinary handlers over `HealthCheckService` rather than with
 `MapHealthChecks`: that extension writes a bare status string and registers a raw request delegate

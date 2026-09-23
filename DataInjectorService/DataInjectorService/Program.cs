@@ -40,7 +40,6 @@ public static class Program
             );
 
             builder.Services.AddCorsConfiguration(builder.Configuration);
-            builder.Services.AddControllers();
             builder.Services.AddSwaggerGenConfiguration();
             builder.Services.AddDataInjectorServices(builder.Configuration);
             builder.Services.AddHealthCheckConfiguration();
@@ -56,10 +55,9 @@ public static class Program
 
             app.UseHttpsRedirection();
             app.UseCors("AllowOrigins");
-            app.UseAuthorization();
-            app.MapControllers();
 
-            // Local/dev only: not restricted to internal networks here.
+            // No authentication here: this service exposes only probes, metrics and Swagger. Adding
+            // an inbound API would mean adopting the sibling services' ApiKeyAuthenticationHandler.
             app.MapPrometheusScrapingEndpoint();
 
             app.MapHealthEndpoints();

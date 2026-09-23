@@ -1,0 +1,21 @@
+# Builds the five services from this working tree instead of pulling what CI last published, so a
+# change can be run before it is pushed. The main compose file has no build contexts on purpose:
+# `up` there is a deployment, not a compile.
+#
+# Usage: docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
+services:
+  data_injector:
+    build:
+      context: ./DataInjectorService/DataInjectorService
+  data_processor:
+    build:
+      context: ./DataProcessorService
+  graphql_gateway:
+    build:
+      context: ./GraphQLGatewayService
+  notification_service:
+    build:
+      context: ./NotificationService
+  meter_readings_ui:
+    build:
+      context: ./MeterReadingsUI

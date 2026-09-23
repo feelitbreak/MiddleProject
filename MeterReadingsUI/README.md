@@ -142,8 +142,18 @@ there is no CORS and no back-end host in the bundle. The two targets are where t
 forwards them; they carry no prefix, so they never reach client code.
 
 **Vite inlines `VITE_` values at build time**, so the image cannot be repointed without rebuilding.
-For the container, change [`nginx.conf`](nginx.conf) instead -- it proxies `/graphql` to
-`graphql_gateway:8080` and `/hubs` to `notification_service:8080`.
+For the container, change [`nginx.default.conf.template`](nginx.default.conf.template) instead --
+it proxies `/graphql` to `graphql_gateway:8080` and `/hubs` to `notification_service:8080`.
+
+### The API keys live in the proxy
+
+Both back ends require `X-Api-Key`, and nginx adds it when proxying, so nothing about the key
+reaches the browser. The server block is a template the entrypoint renders at container start from
+`GRAPHQL_API_KEY` and `NOTIFICATION_API_KEY`, into `/tmp` because the nginx user cannot write
+`/etc/nginx/conf.d` -- so rotating a key is a restart, not a rebuild.
+
+`vite.config.ts` does the same for the dev server, reading both through the unprefixed `loadEnv`
+call so they never reach client code. Set them in `.env` or the gateway answers 401.
 
 ## Running locally
 
