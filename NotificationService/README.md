@@ -2,8 +2,8 @@
 
 Real-time signals for the dashboard. It consumes the `meter-readings-persisted` topic that
 [DataProcessorService](../DataProcessorService) publishes after each committed batch, and fans each
-event out to connected browsers over SignalR. See [../MiddleProject.md](../MiddleProject.md) for the
-brief.
+event out to connected browsers over SignalR. See [the repository README](../README.md) for how the
+whole system fits together.
 
 ## Responsibilities
 

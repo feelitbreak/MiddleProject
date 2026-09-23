@@ -1,6 +1,6 @@
 # DataProcessorService
 
-The Data Processor microservice of the [MiddleProject](../MiddleProject.md) system. It consumes
+The Data Processor microservice of the [MiddleProject](../README.md) system. It consumes
 meter readings from Kafka, published by [DataInjectorService](../DataInjectorService), and persists
 them into PostgreSQL.
 

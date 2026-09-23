@@ -1,7 +1,7 @@
 # MiddleProject
 
-Microservices around an intentionally unstable external API. See [MiddleProject.md](MiddleProject.md)
-for the brief and each service's own README for detail.
+Microservices around an intentionally unstable external API. See [README.md](README.md) for what the
+system does and why it is shaped this way, and each service's own README for detail.
 
 ```
 WeakApp --(HTTP)--> DataInjectorService --(Kafka)--> DataProcessorService --> PostgreSQL
@@ -103,6 +103,7 @@ preference for platform and library built-ins over bespoke utilities.
 
 ## Local stack
 
-`docker compose up -d` from the repo root. Postgres `meterdb` (`postgres`/`postgres`, local only),
-Kafka UI on 8070, Prometheus 9090, Grafana 3000, injector 8082, processor 8084,
-gateway 8086, notifications 8088, UI 8090.
+`docker compose up -d` from the repo root. WeakApp 8080, Postgres `meterdb` (`postgres`/`postgres`,
+local only), Kafka UI on 8070, Prometheus 9090, Grafana 3000, injector 8082, processor 8084,
+gateway 8086, notifications 8088, UI 8090. `watchtower` runs alongside them with no port, pulling
+newly published images.
