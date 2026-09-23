@@ -52,8 +52,7 @@ jobs:
           /o:"feelitbreak" \
           /d:sonar.token="${{ secrets.SONAR_TOKEN_NOTIFICATION }}" \
           /d:sonar.cs.vscoveragexml.reportsPaths=coverage.xml \
-          /d:sonar.projectBaseDir="$GITHUB_WORKSPACE/NotificationService" \
-          /d:sonar.coverage.exclusions="src/NotificationService/Program.cs,src/NotificationService/Extensions/Extensions.cs,src/NotificationService/Endpoints/**,src/NotificationService/Messaging/KafkaConsumerServiceLog.cs"
+          /d:sonar.projectBaseDir="$GITHUB_WORKSPACE/NotificationService"
         dotnet build --no-restore
         dotnet-coverage collect "dotnet test --no-build --verbosity normal" -f xml -o "coverage.xml"
         dotnet-sonarscanner end /d:sonar.token="${{ secrets.SONAR_TOKEN_NOTIFICATION }}"
