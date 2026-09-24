@@ -5,6 +5,8 @@ using DataProcessorService.Infrastructure.Configuration;
 using DataProcessorService.Infrastructure.Telemetry;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using OpenTelemetry;
+using OpenTelemetry.Context.Propagation;
 using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
@@ -68,7 +70,11 @@ public sealed class ReadingsPersistedProducer : IReadingsPersistedProducer
         );
 
         var headers = new Headers();
-        InjectTraceContext(headers);
+        Propagators.DefaultTextMapPropagator.Inject(
+            new PropagationContext(Activity.Current?.Context ?? default, Baggage.Current),
+            headers,
+            static (carrier, key, value) => carrier.Add(key, Encoding.UTF8.GetBytes(value))
+        );
 
         // Unkeyed: a broadcast signal, with no per-sensor ordering to preserve.
         await this.producer.ProduceAsync(
@@ -79,24 +85,6 @@ public sealed class ReadingsPersistedProducer : IReadingsPersistedProducer
 
         this.metrics.ReadingsPersistedEventsPublished.Add(1);
         this.logger.ReadingsPersisted(this.topic, message.ReadingCount, message.Sensors.Count);
-    }
-
-    /// <summary><see cref="Activity.Id"/> is the W3C traceparent verbatim, so no propagator.</summary>
-    private static void InjectTraceContext(Headers headers)
-    {
-        var activity = Activity.Current;
-
-        if (activity?.Id is not { } traceParent)
-        {
-            return;
-        }
-
-        headers.Add("traceparent", Encoding.UTF8.GetBytes(traceParent));
-
-        if (activity.TraceStateString is { Length: > 0 } traceState)
-        {
-            headers.Add("tracestate", Encoding.UTF8.GetBytes(traceState));
-        }
     }
 
     /// <inheritdoc/>

@@ -5,6 +5,8 @@ using DataInjectorService.Configuration;
 using DataInjectorService.Models;
 using DataInjectorService.Telemetry;
 using Microsoft.Extensions.Options;
+using OpenTelemetry;
+using OpenTelemetry.Context.Propagation;
 using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
@@ -82,7 +84,11 @@ public sealed class KafkaProducer : IKafkaProducer
             new Header("schema-version", SchemaVersionHeaderValue),
         };
 
-        InjectTraceContext(headers);
+        Propagators.DefaultTextMapPropagator.Inject(
+            new PropagationContext(Activity.Current?.Context ?? default, Baggage.Current),
+            headers,
+            static (carrier, key, value) => carrier.Add(key, Encoding.UTF8.GetBytes(value))
+        );
 
         var message = new Message<string, string>
         {
@@ -102,24 +108,6 @@ public sealed class KafkaProducer : IKafkaProducer
             result.Offset.Value,
             key
         );
-    }
-
-    /// <summary><see cref="Activity.Id"/> is the W3C traceparent verbatim, so no propagator.</summary>
-    private static void InjectTraceContext(Headers headers)
-    {
-        var activity = Activity.Current;
-
-        if (activity?.Id is not { } traceParent)
-        {
-            return;
-        }
-
-        headers.Add("traceparent", Encoding.UTF8.GetBytes(traceParent));
-
-        if (activity.TraceStateString is { Length: > 0 } traceState)
-        {
-            headers.Add("tracestate", Encoding.UTF8.GetBytes(traceState));
-        }
     }
 
     /// <inheritdoc/>

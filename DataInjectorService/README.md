@@ -105,6 +105,7 @@ Retries, circuit breaking and per-attempt timeouts are wired via
 | `MessageSendMaxRetries` | Retries for a failed produce request | `3` |
 | `RetryBackoffMs` | Backoff between produce retries | `500` |
 | `MessageTimeoutMs` | Total time a message may spend being produced, including retries | `30000` |
+| `MaxConcurrentPublishes` | How many readings one poll publishes at a time | `8` |
 
 `EnableIdempotence` requires `Acks=All` and at most 5 in-flight requests per connection; both
 combinations are rejected at startup by `KafkaOptions.Validate` rather than surfacing as an opaque

@@ -369,7 +369,7 @@ public sealed class KafkaConsumerServiceTests(PostgresFixture postgres, KafkaFix
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddSingleton<ISensorRegistry, SensorRegistry>();
         services.AddSingleton<DataProcessorMetrics>();
-        services.AddSingleton<ConsumerHeartbeat>();
+        services.AddSingleton<IConsumerHeartbeat, ConsumerHeartbeat>();
         services.AddSingleton<IDeadLetterProducer, DeadLetterProducer>();
         services.AddSingleton<IReadingsPersistedProducer, ReadingsPersistedProducer>();
 

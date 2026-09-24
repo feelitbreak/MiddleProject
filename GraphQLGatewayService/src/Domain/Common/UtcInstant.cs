@@ -15,4 +15,7 @@ public static class UtcInstant
         var utc = value.ToUniversalTime();
         return new DateTimeOffset(utc.Ticks - (utc.Ticks % TicksPerMicrosecond), TimeSpan.Zero);
     }
+
+    public static DateTimeOffset? Normalize(DateTimeOffset? value) =>
+        value is { } instant ? Normalize(instant) : null;
 }

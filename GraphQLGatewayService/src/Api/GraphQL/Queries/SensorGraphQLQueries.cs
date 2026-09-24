@@ -15,7 +15,7 @@ internal static partial class SensorGraphQLQueries
     /// </summary>
     public static async Task<IReadOnlyList<Sensor>> GetSensorsAsync(
         MeterReadingsDbContext context,
-        QueryCache cache,
+        IQueryCache cache,
         CancellationToken cancellationToken
     )
     {
@@ -44,7 +44,7 @@ internal static partial class SensorGraphQLQueries
     /// <summary>Every distinct location, ordered, for a location filter.</summary>
     public static async Task<IReadOnlyList<string>> GetLocationsAsync(
         MeterReadingsDbContext context,
-        QueryCache cache,
+        IQueryCache cache,
         CancellationToken cancellationToken
     )
     {

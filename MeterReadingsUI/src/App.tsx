@@ -48,7 +48,7 @@ export default function App() {
         clock={new Date(now).toLocaleTimeString([], { hour12: false })}
       />
       <ErrorBoundary>
-        <Suspense fallback={<EmptyPanel title="LOADING" detail="Fetching the screen's code." />}>
+        <Suspense fallback={<EmptyPanel title="LOADING" detail="Loading the page." />}>
           <Routes>
             <Route path="/" element={<ConsolePage controls={controls} live={live} />} />
             <Route path="/readings" element={<ExplorerPage controls={controls} />} />

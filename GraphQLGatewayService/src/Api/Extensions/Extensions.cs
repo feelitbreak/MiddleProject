@@ -44,23 +44,36 @@ public static class Extensions
 
     public const string GraphQLRateLimitPolicy = "graphql";
 
-    /// <summary>Concurrent executions allowed; without it Npgsql's pool becomes the queue.</summary>
-    private const int MaxConcurrentRequests = 32;
-
-    /// <summary>How many may wait for a permit before the rest are rejected outright.</summary>
-    private const int MaxQueuedRequests = 64;
+    /// <summary>
+    /// Above HybridCache's 1 MiB default. Entries serialise even in memory, and past the cap
+    /// HybridCache silently stores nothing.
+    /// </summary>
+    private const int MaxCachePayloadBytes = 4 * 1024 * 1024;
 
     /// <summary>Registers the GraphQL endpoint's concurrency limit, deliberately unpartitioned.</summary>
-    public static void AddRequestLimiting(this IServiceCollection services)
+    public static void AddRequestLimiting(
+        this IServiceCollection services,
+        IConfiguration configuration
+    )
     {
+        services
+            .AddOptions<RateLimitingOptions>()
+            .Bind(configuration.GetSection(RateLimitingOptions.SectionName))
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
+
+        var limits =
+            configuration.GetSection(RateLimitingOptions.SectionName).Get<RateLimitingOptions>()
+            ?? new();
+
         services.AddRateLimiter(options =>
         {
             options.AddConcurrencyLimiter(
                 GraphQLRateLimitPolicy,
                 limiter =>
                 {
-                    limiter.PermitLimit = MaxConcurrentRequests;
-                    limiter.QueueLimit = MaxQueuedRequests;
+                    limiter.PermitLimit = limits.PermitLimit;
+                    limiter.QueueLimit = limits.QueueLimit;
                     limiter.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
                 }
             );
@@ -206,11 +219,9 @@ public static class Extensions
             .ValidateDataAnnotations()
             .ValidateOnStart();
 
-        // Here because the resolvers do not work without it. The cached types are interfaces, so
-        // entries serialise even in memory, and past the payload cap HybridCache silently stores
-        // nothing.
-        services.AddHybridCache(options => options.MaximumPayloadBytes = 4 * 1024 * 1024);
-        services.AddSingleton<QueryCache>();
+        // Here because the resolvers do not work without it.
+        services.AddHybridCache(options => options.MaximumPayloadBytes = MaxCachePayloadBytes);
+        services.AddSingleton<IQueryCache, QueryCache>();
 
         services
             .AddGraphQLServer()
@@ -294,8 +305,6 @@ public static class Extensions
                     .AddAspNetCoreInstrumentation()
                     .AddRuntimeInstrumentation()
                     .AddMeter(GraphQLGatewayMetrics.MeterName)
-                    // Where the limiter's effect shows up, since nothing exports traces.
-                    .AddMeter("Microsoft.AspNetCore.RateLimiting")
                     .AddPrometheusExporter()
             )
             // No exporter: this exists to mint the trace id the logs print.

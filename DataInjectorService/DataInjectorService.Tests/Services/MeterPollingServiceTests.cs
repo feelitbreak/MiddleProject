@@ -281,6 +281,7 @@ public sealed class MeterPollingServiceTests
             weakAppService,
             kafkaProducer,
             opts,
+            Options.Create(new KafkaOptions()),
             NullLogger<MeterPollingService>.Instance,
             metrics ?? new DataInjectorMetrics()
         );

@@ -105,8 +105,8 @@ calibrated against the schema: a fully expanded `readingAggregates` analyses at 
 limit admits any single query while rejecting the same aggregation aliased three times over. Introspection and the Nitro IDE are
 Development-only; `GET` is refused everywhere.
 
-At most 32 operations execute at once with 64 more queued; past that the endpoint answers **429**
-with a GraphQL-shaped error body. That bound is separate from the cost ceiling and not implied by
+A concurrency limit — 32 executing and 64 queued by default, set in `RateLimiting` below — bounds
+the endpoint; past it the endpoint answers **429** with a GraphQL-shaped error body. That bound is separate from the cost ceiling and not implied by
 it — ten thousand cheap `locations` queries each analyse well under 5000 and still exhaust the
 connection pool. The limit is unpartitioned: behind the proxy every browser arrives from one
 address, so a per-client partition would either be one bucket shared by all of them or rest on a
@@ -155,6 +155,16 @@ time zone, so without it aggregation periods would follow the server's local mid
 Keeping `AggregateSeconds` under the injector's polling interval leaves a series at most one poll
 behind. Unlike the schema's guard rails these are tuning, not invariants: a stale chart is a
 judgement call, not a denial-of-service hole.
+
+### `RateLimiting`
+
+| Key | Description | Default |
+|---|---|---|
+| `PermitLimit` | Operations that may execute at once. | `32` |
+| `QueueLimit` | How many may wait for a permit before the rest get a 429. | `64` |
+
+Size `PermitLimit` below the database connection pool (Npgsql's default is 100): past the pool,
+requests queue there instead and fail at the execution timeout rather than with a 429.
 
 ### `Cors`
 

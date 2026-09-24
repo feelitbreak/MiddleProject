@@ -1,8 +1,8 @@
 namespace GraphQLGatewayService.Infrastructure.Persistence.Queries;
 
+using GraphQLGatewayService.Domain.Common;
 using GraphQLGatewayService.Domain.Contracts;
 using GraphQLGatewayService.Infrastructure.Persistence.ReadModels;
-using Microsoft.EntityFrameworkCore;
 
 /// <summary>
 /// Composable read queries. Each returns an <see cref="IQueryable{T}"/> so a resolver can append
@@ -38,12 +38,14 @@ public static class ReadingQueries
 
         if (filter.From is not null)
         {
-            query = query.Where(reading => reading.CollectedAt >= filter.From);
+            var from = UtcInstant.Normalize(filter.From);
+            query = query.Where(reading => reading.CollectedAt >= from);
         }
 
         if (filter.To is not null)
         {
-            query = query.Where(reading => reading.CollectedAt < filter.To);
+            var to = UtcInstant.Normalize(filter.To);
+            query = query.Where(reading => reading.CollectedAt < to);
         }
 
         return query;
@@ -71,11 +73,11 @@ public static class ReadingQueries
                 Type = reading.Sensor.Type,
             },
             CollectedAt = reading.CollectedAt,
-            Co2 = (int?)(reading as AirQualityReadingRow)!.Co2,
-            Pm25 = (int?)(reading as AirQualityReadingRow)!.Pm25,
-            Humidity = (int?)(reading as AirQualityReadingRow)!.Humidity,
-            MotionDetected = (bool?)(reading as MotionReadingRow)!.MotionDetected,
-            EnergyKwh = (double?)(reading as EnergyReadingRow)!.EnergyKwh,
+            Co2 = (reading as AirQualityReadingRow)!.Co2,
+            Pm25 = (reading as AirQualityReadingRow)!.Pm25,
+            Humidity = (reading as AirQualityReadingRow)!.Humidity,
+            MotionDetected = (reading as MotionReadingRow)!.MotionDetected,
+            EnergyKwh = (reading as EnergyReadingRow)!.EnergyKwh,
         });
     }
 
@@ -105,8 +107,8 @@ public static class ReadingQueries
 
         // Tested inside the subquery because they constrain the correlated collection, not the
         // outer sequence. EF parameterises the captured locals.
-        var from = filter?.From;
-        var to = filter?.To;
+        var from = UtcInstant.Normalize(filter?.From);
+        var to = UtcInstant.Normalize(filter?.To);
 
         return sensors
             .Select(sensor =>

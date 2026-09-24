@@ -43,8 +43,7 @@ export default function FilterPanel({
       <div className="filter-grid">
         {catalogueFailed && (
           <p className="filter-note">
-            CATALOGUE UNAVAILABLE &mdash; the location and sensor lists could not be loaded, so they
-            are empty rather than genuinely so.
+            Locations couldn&apos;t be loaded, so only ALL is available for now.
           </p>
         )}
 

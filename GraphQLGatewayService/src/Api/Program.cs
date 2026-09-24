@@ -42,7 +42,7 @@ public static class Program
             builder.Services.AddApiKeyAuthentication(builder.Configuration);
             builder.Services.AddPersistence(builder.Configuration);
             builder.Services.AddGraphQLApi(builder.Configuration, builder.Environment);
-            builder.Services.AddRequestLimiting();
+            builder.Services.AddRequestLimiting(builder.Configuration);
             builder.Services.AddHealthCheckConfiguration();
             builder.Services.AddObservability();
 

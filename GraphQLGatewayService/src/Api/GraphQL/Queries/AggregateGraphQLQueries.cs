@@ -23,7 +23,7 @@ internal static partial class AggregateGraphQLQueries
         ReadingMetric metric,
         MeterReadingsDbContext context,
         TimeProvider timeProvider,
-        QueryCache cache,
+        IQueryCache cache,
         CancellationToken cancellationToken,
         AggregationInterval interval = AggregationInterval.Hour,
         AggregateFilter? where = null

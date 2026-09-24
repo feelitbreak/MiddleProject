@@ -142,7 +142,7 @@ public static class Extensions
             .ValidateDataAnnotations()
             .ValidateOnStart();
 
-        services.AddSingleton<ConsumerHeartbeat>();
+        services.AddSingleton<IConsumerHeartbeat, ConsumerHeartbeat>();
         services.AddHostedService<KafkaConsumerService>();
     }
 

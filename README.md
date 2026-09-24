@@ -84,6 +84,9 @@ the pinned `container_name` otherwise leaves the old container on the old image:
 docker compose -f docker-compose.yml -f docker-compose.build.yml down && docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
 ```
 
+The overlay also scales watchtower to zero, which would otherwise swap the build back to the last
+published image within a minute.
+
 ## CI/CD and branching
 
 Each service and the frontend has its own workflow in [`.github/workflows`](.github/workflows),

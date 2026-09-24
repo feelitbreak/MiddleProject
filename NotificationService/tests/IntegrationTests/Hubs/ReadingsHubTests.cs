@@ -171,7 +171,7 @@ public sealed class ReadingsHubTests(KafkaFixture kafka) : IClassFixture<KafkaFi
     /// </summary>
     private static async Task WaitForPartitionAssignmentAsync(NotificationApp app)
     {
-        var heartbeat = app.Services.GetRequiredService<ConsumerHeartbeat>();
+        var heartbeat = app.Services.GetRequiredService<IConsumerHeartbeat>();
         var deadline = DateTimeOffset.UtcNow + TimeSpan.FromSeconds(60);
 
         while (!heartbeat.HasAssignment && DateTimeOffset.UtcNow < deadline)

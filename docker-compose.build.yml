@@ -2,33 +2,25 @@
 # change can be run before it is pushed. The main compose file has no build contexts on purpose:
 # `up` there is a deployment, not a compile.
 #
-# The watchtower label makes that stick: watchtower replaces any container whose published image is
-# newer, so a locally built one is otherwise swapped back within a minute.
+# Watchtower is scaled to zero here: it replaces any container whose published image is newer, so
+# it would swap a locally built image back to the last one CI pushed within a minute.
 #
 # Usage: docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
 services:
   data_injector:
     build:
       context: ./DataInjectorService/DataInjectorService
-    labels:
-      com.centurylinklabs.watchtower.enable: "false"
   data_processor:
     build:
       context: ./DataProcessorService
-    labels:
-      com.centurylinklabs.watchtower.enable: "false"
   graphql_gateway:
     build:
       context: ./GraphQLGatewayService
-    labels:
-      com.centurylinklabs.watchtower.enable: "false"
   notification_service:
     build:
       context: ./NotificationService
-    labels:
-      com.centurylinklabs.watchtower.enable: "false"
   meter_readings_ui:
     build:
       context: ./MeterReadingsUI
-    labels:
-      com.centurylinklabs.watchtower.enable: "false"
+  watchtower:
+    scale: 0

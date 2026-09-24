@@ -7,6 +7,7 @@ using NotificationService.Configuration;
 using NotificationService.Contracts;
 using NotificationService.Hubs;
 using NotificationService.Telemetry;
+using OpenTelemetry.Context.Propagation;
 using System.Diagnostics;
 using System.Text;
 
@@ -20,7 +21,7 @@ using System.Text;
 /// </summary>
 public sealed class KafkaConsumerService(
     IHubContext<ReadingsHub> hubContext,
-    ConsumerHeartbeat heartbeat,
+    IConsumerHeartbeat heartbeat,
     NotificationMetrics metrics,
     IOptions<KafkaOptions> options,
     ILogger<KafkaConsumerService> logger
@@ -144,7 +145,9 @@ public sealed class KafkaConsumerService(
         using var activity = Activities.StartActivity(
             "broadcast readings",
             ActivityKind.Consumer,
-            TraceContextOf(result.Message.Headers)
+            Propagators
+                .DefaultTextMapPropagator.Extract(default, result.Message.Headers, ReadHeader)
+                .ActivityContext
         );
 
         metrics.EventsConsumed.Add(1);
@@ -194,26 +197,10 @@ public sealed class KafkaConsumerService(
         }
     }
 
-    /// <summary>The message's W3C trace context, or <c>default</c> when it carries none.</summary>
-    private static ActivityContext TraceContextOf(Headers? headers)
-    {
-        if (headers is null || !headers.TryGetLastBytes("traceparent", out var traceParent))
-        {
-            return default;
-        }
-
-        var traceState = headers.TryGetLastBytes("tracestate", out var raw)
-            ? Encoding.UTF8.GetString(raw)
-            : null;
-
-        return ActivityContext.TryParse(
-            Encoding.UTF8.GetString(traceParent),
-            traceState,
-            out var context
-        )
-            ? context
-            : default;
-    }
+    private static IEnumerable<string> ReadHeader(Headers? headers, string key) =>
+        headers is not null && headers.TryGetLastBytes(key, out var value)
+            ? [Encoding.UTF8.GetString(value)]
+            : [];
 
     private void RecordLag(ReadingsPersistedMessage message)
     {

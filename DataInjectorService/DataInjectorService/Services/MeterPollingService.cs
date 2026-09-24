@@ -24,6 +24,7 @@ public sealed class MeterPollingService(
     IWeakAppService weakAppService,
     IKafkaProducer kafkaProducer,
     IOptions<WeakAppOptions> options,
+    IOptions<KafkaOptions> kafkaOptions,
     ILogger<MeterPollingService> logger,
     DataInjectorMetrics metrics
 ) : BackgroundService
@@ -32,9 +33,6 @@ public sealed class MeterPollingService(
 
     /// <summary>One span per poll cycle, so every reading published in it shares a trace id.</summary>
     private static readonly ActivitySource Activities = new(ActivitySourceName);
-
-    /// <summary>How many readings one poll publishes at a time.</summary>
-    private const int MaxConcurrentPublishes = 8;
 
     private readonly WeakAppOptions options = options.Value;
 
@@ -117,7 +115,7 @@ public sealed class MeterPollingService(
             readings,
             new ParallelOptions
             {
-                MaxDegreeOfParallelism = MaxConcurrentPublishes,
+                MaxDegreeOfParallelism = kafkaOptions.Value.MaxConcurrentPublishes,
                 CancellationToken = cancellationToken,
             },
             async (reading, token) =>

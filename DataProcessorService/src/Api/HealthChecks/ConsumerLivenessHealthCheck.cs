@@ -17,7 +17,7 @@ using System.Globalization;
 /// </para>
 /// </summary>
 public sealed class ConsumerLivenessHealthCheck(
-    ConsumerHeartbeat heartbeat,
+    IConsumerHeartbeat heartbeat,
     IOptions<KafkaOptions> options
 ) : IHealthCheck
 {
