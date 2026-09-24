@@ -46,7 +46,11 @@ export default function ConsolePage({ controls, live }: Readonly<ConsolePageProp
       {/* Filter and type cards share one column so neither sits in a grid track that a scrolling
           panel spans; an auto track would otherwise grow to the table's full height. */}
       <div className="console-side">
-        <FilterPanel controls={controls} locations={locations} />
+        <FilterPanel
+          controls={controls}
+          locations={locations}
+          catalogueFailed={catalogue.error !== undefined}
+        />
         <SensorTypeAggregates rows={visible} />
       </div>
 
@@ -58,6 +62,7 @@ export default function ConsolePage({ controls, live }: Readonly<ConsolePageProp
         <LatestValues
           rows={visible}
           sensorCount={sensorCount}
+          loading={latest.loading && latest.data === undefined}
           refreshing={latest.loading && latest.data !== undefined}
           now={now}
           query={`latestReadings(where:) · ${sensorCount} sensors, grouped into ${visible.length} locations`}

@@ -9,6 +9,7 @@ using NotificationService.Messaging;
 using NotificationService.Telemetry;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
 using System.Diagnostics.CodeAnalysis;
 
 /// <summary>
@@ -175,6 +176,12 @@ public static class Extensions
                     .AddRuntimeInstrumentation()
                     .AddMeter(NotificationMetrics.MeterName)
                     .AddPrometheusExporter()
+            )
+            // No exporter: this exists to mint the ids the logs print and the headers carry.
+            .WithTracing(tracing =>
+                tracing
+                    .AddAspNetCoreInstrumentation()
+                    .AddSource(KafkaConsumerService.ActivitySourceName)
             );
     }
 }

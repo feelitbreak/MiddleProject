@@ -76,15 +76,19 @@ public sealed class KafkaProducer : IKafkaProducer
         var key = $"{reading.Type}:{reading.Name}";
         var value = JsonSerializer.Serialize(reading, JsonOptions);
 
+        var headers = new Headers
+        {
+            new Header("content-type", ContentTypeHeaderValue),
+            new Header("schema-version", SchemaVersionHeaderValue),
+        };
+
+        InjectTraceContext(headers);
+
         var message = new Message<string, string>
         {
             Key = key,
             Value = value,
-            Headers =
-            [
-                new Header("content-type", ContentTypeHeaderValue),
-                new Header("schema-version", SchemaVersionHeaderValue),
-            ],
+            Headers = headers,
         };
 
         var stopwatch = Stopwatch.StartNew();
@@ -98,6 +102,24 @@ public sealed class KafkaProducer : IKafkaProducer
             result.Offset.Value,
             key
         );
+    }
+
+    /// <summary><see cref="Activity.Id"/> is the W3C traceparent verbatim, so no propagator.</summary>
+    private static void InjectTraceContext(Headers headers)
+    {
+        var activity = Activity.Current;
+
+        if (activity?.Id is not { } traceParent)
+        {
+            return;
+        }
+
+        headers.Add("traceparent", Encoding.UTF8.GetBytes(traceParent));
+
+        if (activity.TraceStateString is { Length: > 0 } traceState)
+        {
+            headers.Add("tracestate", Encoding.UTF8.GetBytes(traceState));
+        }
     }
 
     /// <inheritdoc/>

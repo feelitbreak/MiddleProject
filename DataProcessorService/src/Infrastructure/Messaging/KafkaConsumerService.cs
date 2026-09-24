@@ -11,6 +11,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System.Diagnostics;
+using System.Text;
 
 /// <summary>
 /// Consumes the readings topic in batches and persists each batch atomically.
@@ -37,6 +38,10 @@ public sealed class KafkaConsumerService(
     /// partition assignment.
     /// </summary>
     private static readonly TimeSpan PollTimeout = TimeSpan.FromMilliseconds(100);
+
+    public const string ActivitySourceName = DataProcessorMetrics.MeterName;
+
+    private static readonly ActivitySource Activities = new(ActivitySourceName);
 
     private readonly KafkaOptions options = options.Value;
 
@@ -176,6 +181,24 @@ public sealed class KafkaConsumerService(
         CancellationToken stoppingToken
     )
     {
+        // A batch has no single parent, so the upstream traces are links, not a parent.
+        var links = UpstreamTraces(batch);
+
+        using var activity = Activities.StartActivity(
+            "ingest readings batch",
+            ActivityKind.Consumer,
+            parentContext: default,
+            links: links
+        );
+
+        if (links.Count > 0)
+        {
+            logger.BatchLinkedToUpstream(
+                links.Count,
+                string.Join(", ", links.Select(link => link.Context.TraceId.ToHexString()))
+            );
+        }
+
         var stopwatch = Stopwatch.StartNew();
         metrics.MessagesConsumed.Add(batch.Count);
 
@@ -398,6 +421,46 @@ public sealed class KafkaConsumerService(
                 stoppingToken
             );
         }
+    }
+
+    /// <summary>One link per distinct upstream trace, so a 500-message batch links once.</summary>
+    private static List<ActivityLink> UpstreamTraces(List<ConsumeResult<byte[], byte[]>> batch)
+    {
+        var links = new List<ActivityLink>();
+        var seen = new HashSet<ActivityTraceId>();
+
+        foreach (var message in batch)
+        {
+            var context = TraceContextOf(message.Message.Headers);
+
+            if (context != default && seen.Add(context.TraceId))
+            {
+                links.Add(new ActivityLink(context));
+            }
+        }
+
+        return links;
+    }
+
+    /// <summary>The message's W3C trace context, or <c>default</c> when it carries none.</summary>
+    private static ActivityContext TraceContextOf(Headers? headers)
+    {
+        if (headers is null || !headers.TryGetLastBytes("traceparent", out var traceParent))
+        {
+            return default;
+        }
+
+        var traceState = headers.TryGetLastBytes("tracestate", out var raw)
+            ? Encoding.UTF8.GetString(raw)
+            : null;
+
+        return ActivityContext.TryParse(
+            Encoding.UTF8.GetString(traceParent),
+            traceState,
+            out var context
+        )
+            ? context
+            : default;
     }
 
     private void RecordLag(List<ReadingToIngest> readings)

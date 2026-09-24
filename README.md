@@ -101,6 +101,18 @@ visualized in Grafana. Bring the stack up with `docker compose up -d` and open:
 - Prometheus: http://localhost:9090
 - Grafana: http://localhost:3000 (anonymous viewer access, or `admin`/`admin`)
 
+### Correlating a reading across services
+
+Every log line starts with the ambient trace id, or `[]` where there is none — host start-up and
+anything outside a request or a poll cycle. The injector opens one span per poll cycle and writes
+its trace onto each Kafka message; the processor links the batch it assembles back to the traces it
+was built from and logs which ones; the notification service broadcasts under the processor's
+trace. One id out of the injector's log therefore leads to the batch that ingested it and on to the
+browser push.
+
+No exporter is configured, so nothing collects the spans themselves — the ids in the logs are what
+this buys.
+
 ### Pattern for adding a new service
 
 Each service exposes its own metrics — there's no shared library across them, since services in

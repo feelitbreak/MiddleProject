@@ -25,6 +25,7 @@ using Microsoft.Extensions.Options;
 using Microsoft.OpenApi;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
 using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using System.Text.Json;
@@ -305,6 +306,12 @@ public static class Extensions
                     .AddRuntimeInstrumentation()
                     .AddMeter(DataProcessorMetrics.MeterName)
                     .AddPrometheusExporter()
+            )
+            // No exporter: this exists to mint the ids the logs print and the headers carry.
+            .WithTracing(tracing =>
+                tracing
+                    .AddAspNetCoreInstrumentation()
+                    .AddSource(KafkaConsumerService.ActivitySourceName)
             );
     }
 

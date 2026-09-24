@@ -18,6 +18,7 @@ function renderPanel(rows: readonly LocationRow[]) {
       <LatestValues
         rows={rows}
         sensorCount={rows.length * 3}
+        loading={false}
         refreshing={false}
         now={NOW}
         query="q"
@@ -131,7 +132,7 @@ describe('LatestValues', () => {
 
     rerender(
       <MemoryRouter>
-        <LatestValues rows={rows} sensorCount={3} refreshing now={NOW} query="q" />
+        <LatestValues rows={rows} sensorCount={3} loading={false} refreshing now={NOW} query="q" />
       </MemoryRouter>,
     );
 

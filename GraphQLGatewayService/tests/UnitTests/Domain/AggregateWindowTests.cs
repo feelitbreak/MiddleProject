@@ -13,26 +13,31 @@ public sealed class AggregateWindowTests
     private static readonly DateTimeOffset Now = new(2026, 5, 1, 12, 30, 0, TimeSpan.Zero);
 
     [Theory]
-    [InlineData(AggregationInterval.Hour, 1)]
-    [InlineData(AggregationInterval.Day, 30)]
-    [InlineData(AggregationInterval.Week, 90)]
-    [InlineData(AggregationInterval.Month, 90)]
-    public void Resolve_NoBounds_DefaultsToWindowSuitedToInterval(
+    [InlineData(AggregationInterval.Hour, 1, 1)]
+    [InlineData(AggregationInterval.Day, 30, 24)]
+    [InlineData(AggregationInterval.Week, 90, 24 * 7)]
+    [InlineData(AggregationInterval.Month, 90, 24 * 31)]
+    public void Resolve_NoBounds_CoversWindowSuitedToInterval(
         AggregationInterval interval,
-        int expectedDays
+        int expectedDays,
+        int longestPeriodHours
     )
     {
         var result = AggregateWindow.Resolve(interval, from: null, to: null, TimeProviderAt(Now));
 
+        // Widening moves each bound by less than one period, which still tells the defaults apart.
+        var requested = Now.AddDays(-expectedDays);
+        var period = TimeSpan.FromHours(longestPeriodHours);
+
         Assert.True(result.IsSuccess);
-        Assert.Equal(Now, result.Value.To);
-        Assert.Equal(TimeSpan.FromDays(expectedDays), result.Value.To - result.Value.From);
+        Assert.InRange(result.Value.From, requested - period, requested);
+        Assert.InRange(result.Value.To, Now, Now + period);
     }
 
     [Fact]
     public void Resolve_OnlyFromSupplied_EndsAtNow()
     {
-        var from = Now.AddHours(-6);
+        var from = new DateTimeOffset(2026, 5, 1, 6, 0, 0, TimeSpan.Zero);
 
         var result = AggregateWindow.Resolve(
             AggregationInterval.Hour,
@@ -43,7 +48,8 @@ public sealed class AggregateWindowTests
 
         Assert.True(result.IsSuccess);
         Assert.Equal(from, result.Value.From);
-        Assert.Equal(Now, result.Value.To);
+        // Now falls at 12:30, and the upper bound covers the whole hour containing it.
+        Assert.Equal(new DateTimeOffset(2026, 5, 1, 13, 0, 0, TimeSpan.Zero), result.Value.To);
     }
 
     [Theory]

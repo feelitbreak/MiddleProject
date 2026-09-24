@@ -30,7 +30,7 @@ public static class Program
                         .ReadFrom.Services(services)
                         .Enrich.FromLogContext()
                         .WriteTo.Console(
-                            outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {SourceContext}: {Message:lj}{NewLine}{Exception}"
+                            outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] [{TraceId}] {SourceContext}: {Message:lj}{NewLine}{Exception}"
                         )
             );
 

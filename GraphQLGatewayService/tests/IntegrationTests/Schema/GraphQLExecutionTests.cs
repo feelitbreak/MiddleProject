@@ -9,6 +9,7 @@ using GraphQLGatewayService.Infrastructure.Telemetry;
 using HotChocolate;
 using HotChocolate.Execution;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Hosting;
@@ -296,7 +297,10 @@ public sealed class GraphQLExecutionTests(PostgresFixture fixture) : IClassFixtu
                 .UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking)
         );
         services.AddHealthChecks().AddDbContextCheck<MeterReadingsDbContext>("database");
-        services.AddGraphQLApi(new TestEnvironment(environmentName));
+        services.AddGraphQLApi(
+            new ConfigurationBuilder().Build(),
+            new TestEnvironment(environmentName)
+        );
 
         await using var provider = services.BuildServiceProvider();
         var executor = await provider

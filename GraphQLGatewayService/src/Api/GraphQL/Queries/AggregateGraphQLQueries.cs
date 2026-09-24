@@ -5,6 +5,7 @@ using GraphQLGatewayService.Domain.Contracts;
 using GraphQLGatewayService.Infrastructure.Persistence;
 using GraphQLGatewayService.Infrastructure.Persistence.Queries;
 using HotChocolate.CostAnalysis.Types;
+using System.Globalization;
 
 /// <summary>Time-bucketed aggregation, shaped for charting.</summary>
 [QueryType]
@@ -22,20 +23,44 @@ internal static partial class AggregateGraphQLQueries
         ReadingMetric metric,
         MeterReadingsDbContext context,
         TimeProvider timeProvider,
+        QueryCache cache,
         CancellationToken cancellationToken,
         AggregationInterval interval = AggregationInterval.Hour,
         AggregateFilter? where = null
     )
     {
+        ArgumentNullException.ThrowIfNull(cache);
+
         var window = AggregateWindow
             .Resolve(interval, where?.From, where?.To, timeProvider)
             .ValueOrThrow();
 
-        return await context.AggregateAsync(
-            metric,
-            interval,
-            window,
-            where?.Location,
+        // Stable for a whole period, because the window sits on period boundaries.
+        var key = string.Create(
+            CultureInfo.InvariantCulture,
+            $"aggregates:{metric}:{interval}:{window.From:O}:{window.To:O}:{where?.Location}"
+        );
+
+        return await cache.GetOrCreateAsync(
+            key,
+            (
+                Context: context,
+                Metric: metric,
+                Interval: interval,
+                Window: window,
+                Location: where?.Location
+            ),
+            static (state, token) =>
+                new ValueTask<IReadOnlyList<AggregateSeries>>(
+                    state.Context.AggregateAsync(
+                        state.Metric,
+                        state.Interval,
+                        state.Window,
+                        state.Location,
+                        token
+                    )
+                ),
+            cache.Aggregates,
             cancellationToken
         );
     }

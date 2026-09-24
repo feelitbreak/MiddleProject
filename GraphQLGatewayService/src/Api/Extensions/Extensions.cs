@@ -2,6 +2,7 @@ namespace GraphQLGatewayService.Api.Extensions;
 
 using GraphQLGatewayService.Api.Authentication;
 using GraphQLGatewayService.Api.Configuration;
+using GraphQLGatewayService.Api.GraphQL;
 using GraphQLGatewayService.Api.GraphQL.Errors;
 using GraphQLGatewayService.Api.HealthChecks;
 using GraphQLGatewayService.Infrastructure.Configuration;
@@ -9,12 +10,16 @@ using GraphQLGatewayService.Infrastructure.Persistence;
 using GraphQLGatewayService.Infrastructure.Telemetry;
 using HotChocolate.Types;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
 using System.Diagnostics.CodeAnalysis;
+using System.Threading.RateLimiting;
 
 /// <summary>Single composition root, matching the layout of the sibling services.</summary>
 [ExcludeFromCodeCoverage(
@@ -36,6 +41,49 @@ public static class Extensions
     /// <c>readingAggregates</c> analyses at 2010, so this admits one but not three aliased.
     /// </summary>
     private const int MaxOperationCost = 5_000;
+
+    public const string GraphQLRateLimitPolicy = "graphql";
+
+    /// <summary>Concurrent executions allowed; without it Npgsql's pool becomes the queue.</summary>
+    private const int MaxConcurrentRequests = 32;
+
+    /// <summary>How many may wait for a permit before the rest are rejected outright.</summary>
+    private const int MaxQueuedRequests = 64;
+
+    /// <summary>Registers the GraphQL endpoint's concurrency limit, deliberately unpartitioned.</summary>
+    public static void AddRequestLimiting(this IServiceCollection services)
+    {
+        services.AddRateLimiter(options =>
+        {
+            options.AddConcurrencyLimiter(
+                GraphQLRateLimitPolicy,
+                limiter =>
+                {
+                    limiter.PermitLimit = MaxConcurrentRequests;
+                    limiter.QueueLimit = MaxQueuedRequests;
+                    limiter.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+                }
+            );
+
+            // Defaults to 503, which reads as "the service is down" rather than "slow down".
+            options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
+            options.OnRejected = async (context, cancellationToken) =>
+            {
+                context.HttpContext.Response.StatusCode =
+                    StatusCodes.Status429TooManyRequests;
+                context.HttpContext.Response.ContentType = "application/json; charset=utf-8";
+
+                // Shaped like a GraphQL error: the limiter rejects before HotChocolate sees it.
+                await context.HttpContext.Response.WriteAsync(
+                    """
+                    {"errors":[{"message":"Too many requests in flight. Retry shortly.","extensions":{"code":"TOO_MANY_REQUESTS"}}]}
+                    """,
+                    cancellationToken
+                );
+            };
+        });
+    }
 
     /// <summary>
     /// Registers the API-key scheme. The reverse proxy supplies the key, so a browser never
@@ -143,10 +191,26 @@ public static class Extensions
         );
     }
 
-    /// <summary>Registers the GraphQL schema, its guard rails and its error handling.</summary>
-    public static void AddGraphQLApi(this IServiceCollection services, IHostEnvironment environment)
+    /// <summary>Registers the GraphQL schema, its resolver services, guard rails and errors.</summary>
+    public static void AddGraphQLApi(
+        this IServiceCollection services,
+        IConfiguration configuration,
+        IHostEnvironment environment
+    )
     {
         services.TryAddSingleton(TimeProvider.System);
+
+        services
+            .AddOptions<CacheOptions>()
+            .Bind(configuration.GetSection(CacheOptions.SectionName))
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
+
+        // Here because the resolvers do not work without it. The cached types are interfaces, so
+        // entries serialise even in memory, and past the payload cap HybridCache silently stores
+        // nothing.
+        services.AddHybridCache(options => options.MaximumPayloadBytes = 4 * 1024 * 1024);
+        services.AddSingleton<QueryCache>();
 
         services
             .AddGraphQLServer()
@@ -230,7 +294,11 @@ public static class Extensions
                     .AddAspNetCoreInstrumentation()
                     .AddRuntimeInstrumentation()
                     .AddMeter(GraphQLGatewayMetrics.MeterName)
+                    // Where the limiter's effect shows up, since nothing exports traces.
+                    .AddMeter("Microsoft.AspNetCore.RateLimiting")
                     .AddPrometheusExporter()
-            );
+            )
+            // No exporter: this exists to mint the trace id the logs print.
+            .WithTracing(tracing => tracing.AddAspNetCoreInstrumentation());
     }
 }

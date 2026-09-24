@@ -9,6 +9,8 @@ import { breachesFor, isBreached } from '../../domain/thresholds';
 interface LatestValuesProps {
   rows: readonly LocationRow[];
   sensorCount: number;
+  /** True only on the first fetch, when no rows have arrived yet. */
+  loading: boolean;
   refreshing: boolean;
   now: number;
   query: string;
@@ -31,6 +33,7 @@ function metricValueClass(breached: boolean): string {
 export default function LatestValues({
   rows,
   sensorCount,
+  loading,
   refreshing,
   now,
   query,
@@ -40,16 +43,23 @@ export default function LatestValues({
 
   const breachesOf = (air: AirQualitySlot | null) => (air === null ? [] : breachesFor(air));
 
+  // A first fetch and an empty result look identical from here.
+  const emptyState = loading ? (
+    <EmptyPanel title="LOADING" detail="Fetching the latest reading from each sensor." />
+  ) : (
+    <EmptyPanel
+      title="NO SENSORS MATCH"
+      detail="Nothing in the catalogue matches this filter. Clear the location or sensor type to see everything."
+    />
+  );
+
   return (
     <Window title="LATEST VALUES" className="area-latest" query={query}>
       {refreshing && <RefreshBar />}
       <ThresholdStrip />
 
       {rows.length === 0 ? (
-        <EmptyPanel
-          title="NO SENSORS MATCH"
-          detail="Nothing in the catalogue matches this filter. Clear the location or sensor type to see everything."
-        />
+        emptyState
       ) : (
         <>
           <div className="scroll-area desktop-only">

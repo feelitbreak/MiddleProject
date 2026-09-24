@@ -239,4 +239,21 @@ internal static class DeadLetterProducerLog
             );
         }
     }
+
+    /// <summary>Logs which upstream traces a batch was assembled from.</summary>
+    internal static void BatchLinkedToUpstream(
+        this ILogger<KafkaConsumerService> logger,
+        int traceCount,
+        string traceIds
+    )
+    {
+        if (logger.IsEnabled(LogLevel.Information))
+        {
+            logger.LogInformation(
+                "Batch assembled from {TraceCount} upstream trace(s): {UpstreamTraceIds}",
+                traceCount,
+                traceIds
+            );
+        }
+    }
 }

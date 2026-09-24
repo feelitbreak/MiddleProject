@@ -3,7 +3,15 @@ import type { ApolloError } from '@apollo/client';
 /** The gateway always sends a code; showing it beats a generic apology nobody can act on. */
 function errorCode(error: ApolloError): string {
   const code = error.graphQLErrors[0]?.extensions?.['code'];
-  return typeof code === 'string' ? code : 'NETWORK_ERROR';
+  if (typeof code === 'string') return code;
+
+  // Apollo classifies every non-2xx as a network error, so a 429 never reaches graphQLErrors.
+  const { networkError } = error;
+  if (networkError !== null && 'statusCode' in networkError) {
+    return `HTTP_${String(networkError.statusCode)}`;
+  }
+
+  return 'NETWORK_ERROR';
 }
 
 function correlationId(error: ApolloError): string | null {
@@ -11,7 +19,7 @@ function correlationId(error: ApolloError): string | null {
   return typeof id === 'string' ? id : null;
 }
 
-function WarningIcon() {
+export function WarningIcon() {
   return (
     <svg width="84" height="84" viewBox="0 0 24 24" shapeRendering="crispEdges" aria-hidden="true">
       <g fill="#FF8FA9">

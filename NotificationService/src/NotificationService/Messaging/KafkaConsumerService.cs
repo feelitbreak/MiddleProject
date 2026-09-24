@@ -7,6 +7,8 @@ using NotificationService.Configuration;
 using NotificationService.Contracts;
 using NotificationService.Hubs;
 using NotificationService.Telemetry;
+using System.Diagnostics;
+using System.Text;
 
 /// <summary>
 /// Consumes the readings-persisted topic and broadcasts each event to connected clients.
@@ -29,6 +31,10 @@ public sealed class KafkaConsumerService(
     /// broadcast between polls and must stay responsive to shutdown.
     /// </summary>
     private static readonly TimeSpan PollTimeout = TimeSpan.FromMilliseconds(100);
+
+    public const string ActivitySourceName = NotificationMetrics.MeterName;
+
+    private static readonly ActivitySource Activities = new(ActivitySourceName);
 
     private readonly KafkaOptions options = options.Value;
 
@@ -134,6 +140,13 @@ public sealed class KafkaConsumerService(
         CancellationToken stoppingToken
     )
     {
+        // One message at a time, so the processor's trace is a parent rather than a link.
+        using var activity = Activities.StartActivity(
+            "broadcast readings",
+            ActivityKind.Consumer,
+            TraceContextOf(result.Message.Headers)
+        );
+
         metrics.EventsConsumed.Add(1);
 
         var decoded = ReadingsPersistedDecoder.Decode(result.Message.Value);
@@ -179,6 +192,27 @@ public sealed class KafkaConsumerService(
             // Not fatal: a redelivered signal costs one extra refetch, which consumers tolerate.
             logger.CommitFailed(ex, ex.Error.Reason);
         }
+    }
+
+    /// <summary>The message's W3C trace context, or <c>default</c> when it carries none.</summary>
+    private static ActivityContext TraceContextOf(Headers? headers)
+    {
+        if (headers is null || !headers.TryGetLastBytes("traceparent", out var traceParent))
+        {
+            return default;
+        }
+
+        var traceState = headers.TryGetLastBytes("tracestate", out var raw)
+            ? Encoding.UTF8.GetString(raw)
+            : null;
+
+        return ActivityContext.TryParse(
+            Encoding.UTF8.GetString(traceParent),
+            traceState,
+            out var context
+        )
+            ? context
+            : default;
     }
 
     private void RecordLag(ReadingsPersistedMessage message)
