@@ -126,6 +126,7 @@ export default function ExplorerPage({ controls }: Readonly<ExplorerPageProps>) 
         <FilterPanel
           controls={controls}
           locations={catalogue.data?.locations ?? []}
+          catalogueFailed={catalogue.error !== undefined}
           showPageSize
           pageSize={pageSize}
           onPageSize={setPageSize}

@@ -96,6 +96,23 @@ function renderConsole(mocks: MockedResponse[]) {
 }
 
 describe('ConsolePage', () => {
+  it('should say it is loading, not that nothing matches, before the first values arrive', () => {
+    renderConsole([catalogueMock, latestMock(), aggregatesMock()]);
+
+    expect(screen.getByText('Fetching the latest reading from each sensor.')).toBeInTheDocument();
+    expect(screen.queryByText('NO SENSORS MATCH')).not.toBeInTheDocument();
+  });
+
+  it('should say when the location list could not be loaded', async () => {
+    renderConsole([
+      { request: { query: CATALOGUE }, variableMatcher: anyVariables(), error: new Error('down') },
+      latestMock(),
+      aggregatesMock(),
+    ]);
+
+    expect(await screen.findByText(/Locations couldn.t be loaded/)).toBeInTheDocument();
+  });
+
   it('should report the sensor count from the catalogue, not the grouped row count', async () => {
     renderConsole([catalogueMock, latestMock(), aggregatesMock()]);
 

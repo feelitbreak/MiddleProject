@@ -5,6 +5,8 @@ using DataInjectorService.Configuration;
 using DataInjectorService.Models;
 using DataInjectorService.Telemetry;
 using Microsoft.Extensions.Options;
+using OpenTelemetry;
+using OpenTelemetry.Context.Propagation;
 using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
@@ -76,15 +78,23 @@ public sealed class KafkaProducer : IKafkaProducer
         var key = $"{reading.Type}:{reading.Name}";
         var value = JsonSerializer.Serialize(reading, JsonOptions);
 
+        var headers = new Headers
+        {
+            new Header("content-type", ContentTypeHeaderValue),
+            new Header("schema-version", SchemaVersionHeaderValue),
+        };
+
+        Propagators.DefaultTextMapPropagator.Inject(
+            new PropagationContext(Activity.Current?.Context ?? default, Baggage.Current),
+            headers,
+            static (carrier, key, value) => carrier.Add(key, Encoding.UTF8.GetBytes(value))
+        );
+
         var message = new Message<string, string>
         {
             Key = key,
             Value = value,
-            Headers =
-            [
-                new Header("content-type", ContentTypeHeaderValue),
-                new Header("schema-version", SchemaVersionHeaderValue),
-            ],
+            Headers = headers,
         };
 
         var stopwatch = Stopwatch.StartNew();

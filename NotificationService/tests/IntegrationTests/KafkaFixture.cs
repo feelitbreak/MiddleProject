@@ -23,7 +23,10 @@ public sealed class KafkaFixture : IAsyncLifetime
     /// <summary>
     /// Publishes raw message bodies to a topic, mirroring what DataProcessorService produces.
     /// </summary>
-    public async Task ProduceAsync(string topic, params string[] bodies)
+    public async Task ProduceAsync(string topic, params string[] bodies) =>
+        await this.ProduceAsync(topic, headers: null, bodies);
+
+    public async Task ProduceAsync(string topic, Headers? headers, params string[] bodies)
     {
         var config = new ProducerConfig
         {
@@ -38,7 +41,7 @@ public sealed class KafkaFixture : IAsyncLifetime
         {
             await producer.ProduceAsync(
                 topic,
-                new Message<byte[], byte[]> { Value = Encoding.UTF8.GetBytes(body) }
+                new Message<byte[], byte[]> { Value = Encoding.UTF8.GetBytes(body), Headers = headers }
             );
         }
 

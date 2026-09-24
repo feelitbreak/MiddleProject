@@ -10,7 +10,9 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using OpenTelemetry.Context.Propagation;
 using System.Diagnostics;
+using System.Text;
 
 /// <summary>
 /// Consumes the readings topic in batches and persists each batch atomically.
@@ -25,7 +27,7 @@ public sealed class KafkaConsumerService(
     IServiceScopeFactory scopeFactory,
     IDeadLetterProducer deadLetterProducer,
     IReadingsPersistedProducer readingsPersistedProducer,
-    ConsumerHeartbeat heartbeat,
+    IConsumerHeartbeat heartbeat,
     DataProcessorMetrics metrics,
     IOptions<KafkaOptions> options,
     ILogger<KafkaConsumerService> logger
@@ -37,6 +39,10 @@ public sealed class KafkaConsumerService(
     /// partition assignment.
     /// </summary>
     private static readonly TimeSpan PollTimeout = TimeSpan.FromMilliseconds(100);
+
+    public const string ActivitySourceName = DataProcessorMetrics.MeterName;
+
+    private static readonly ActivitySource Activities = new(ActivitySourceName);
 
     private readonly KafkaOptions options = options.Value;
 
@@ -176,6 +182,24 @@ public sealed class KafkaConsumerService(
         CancellationToken stoppingToken
     )
     {
+        // A batch has no single parent, so the upstream traces are links, not a parent.
+        var links = UpstreamTraces(batch);
+
+        using var activity = Activities.StartActivity(
+            "ingest readings batch",
+            ActivityKind.Consumer,
+            parentContext: default,
+            links: links
+        );
+
+        if (links.Count > 0)
+        {
+            logger.BatchLinkedToUpstream(
+                links.Count,
+                string.Join(", ", links.Select(link => link.Context.TraceId.ToHexString()))
+            );
+        }
+
         var stopwatch = Stopwatch.StartNew();
         metrics.MessagesConsumed.Add(batch.Count);
 
@@ -399,6 +423,32 @@ public sealed class KafkaConsumerService(
             );
         }
     }
+
+    /// <summary>One link per distinct upstream trace, so a 500-message batch links once.</summary>
+    private static List<ActivityLink> UpstreamTraces(List<ConsumeResult<byte[], byte[]>> batch)
+    {
+        var links = new List<ActivityLink>();
+        var seen = new HashSet<ActivityTraceId>();
+
+        foreach (var message in batch)
+        {
+            var context = Propagators
+                .DefaultTextMapPropagator.Extract(default, message.Message.Headers, ReadHeader)
+                .ActivityContext;
+
+            if (context != default && seen.Add(context.TraceId))
+            {
+                links.Add(new ActivityLink(context));
+            }
+        }
+
+        return links;
+    }
+
+    private static IEnumerable<string> ReadHeader(Headers? headers, string key) =>
+        headers is not null && headers.TryGetLastBytes(key, out var value)
+            ? [Encoding.UTF8.GetString(value)]
+            : [];
 
     private void RecordLag(List<ReadingToIngest> readings)
     {

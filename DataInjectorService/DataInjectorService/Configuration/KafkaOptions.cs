@@ -54,6 +54,10 @@ public sealed class KafkaOptions : IValidatableObject
     [Range(1, 900_000)]
     public int MessageTimeoutMs { get; set; } = 30_000;
 
+    /// <summary>Gets or sets how many readings one poll publishes at a time.</summary>
+    [Range(1, 1_000)]
+    public int MaxConcurrentPublishes { get; set; } = 8;
+
     /// <summary>
     /// Rejects the combinations librdkafka refuses at construction, so misconfiguration fails
     /// at startup with a clear message rather than an opaque broker error.

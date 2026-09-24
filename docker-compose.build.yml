@@ -2,6 +2,9 @@
 # change can be run before it is pushed. The main compose file has no build contexts on purpose:
 # `up` there is a deployment, not a compile.
 #
+# Watchtower is scaled to zero here: it replaces any container whose published image is newer, so
+# it would swap a locally built image back to the last one CI pushed within a minute.
+#
 # Usage: docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
 services:
   data_injector:
@@ -19,3 +22,5 @@ services:
   meter_readings_ui:
     build:
       context: ./MeterReadingsUI
+  watchtower:
+    scale: 0

@@ -10,7 +10,7 @@ namespace NotificationService.Messaging;
 /// instead.
 /// </para>
 /// </summary>
-public sealed class ConsumerHeartbeat
+public sealed class ConsumerHeartbeat : IConsumerHeartbeat
 {
     private long lastIterationTicks = DateTimeOffset.UtcNow.UtcTicks;
     private volatile bool hasAssignment;

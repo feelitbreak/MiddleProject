@@ -6,9 +6,11 @@ on:
       - main
     paths:
       - 'GraphQLGatewayService/**'
+      - '.editorconfig'
   pull_request:
     paths:
       - 'GraphQLGatewayService/**'
+      - '.editorconfig'
 
 jobs:
   build:

@@ -6,9 +6,11 @@ on:
       - main
     paths:
       - 'NotificationService/**'
+      - '.editorconfig'
   pull_request:
     paths:
       - 'NotificationService/**'
+      - '.editorconfig'
 
 jobs:
   build:

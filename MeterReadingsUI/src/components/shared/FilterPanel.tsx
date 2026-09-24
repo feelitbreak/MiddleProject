@@ -6,6 +6,8 @@ import type { ReadingMetric, SensorType } from '../../graphql/generated/graphql'
 interface FilterPanelProps {
   controls: UseFilter;
   locations: readonly string[];
+  /** True when the catalogue query failed, so an empty list is a failure rather than no sensors. */
+  catalogueFailed?: boolean;
   /** The explorer pages; the console does not. */
   showPageSize?: boolean;
   pageSize?: number;
@@ -29,6 +31,7 @@ function inputClass(isActive: boolean): string {
 export default function FilterPanel({
   controls,
   locations,
+  catalogueFailed = false,
   showPageSize = false,
   pageSize = 25,
   onPageSize,
@@ -38,6 +41,12 @@ export default function FilterPanel({
   return (
     <Window title="FILTER" tone="filter">
       <div className="filter-grid">
+        {catalogueFailed && (
+          <p className="filter-note">
+            Locations couldn&apos;t be loaded, so only ALL is available for now.
+          </p>
+        )}
+
         <label className="filter-row">
           <span className="filter-label">LOCATION</span>
           <span className={inputClass(filter.location !== null)}>

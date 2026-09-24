@@ -5,6 +5,10 @@ using DataProcessorService.Infrastructure.Configuration;
 using DataProcessorService.Infrastructure.Telemetry;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using OpenTelemetry;
+using OpenTelemetry.Context.Propagation;
+using System.Diagnostics;
+using System.Text;
 using System.Text.Json;
 
 /// <summary>Announces that a batch of readings is committed and queryable.</summary>
@@ -65,10 +69,17 @@ public sealed class ReadingsPersistedProducer : IReadingsPersistedProducer
             ReadingsPersistedMessage.SerializerOptions
         );
 
+        var headers = new Headers();
+        Propagators.DefaultTextMapPropagator.Inject(
+            new PropagationContext(Activity.Current?.Context ?? default, Baggage.Current),
+            headers,
+            static (carrier, key, value) => carrier.Add(key, Encoding.UTF8.GetBytes(value))
+        );
+
         // Unkeyed: a broadcast signal, with no per-sensor ordering to preserve.
         await this.producer.ProduceAsync(
             this.topic,
-            new Message<Null, byte[]> { Value = value },
+            new Message<Null, byte[]> { Value = value, Headers = headers },
             cancellationToken
         );
 

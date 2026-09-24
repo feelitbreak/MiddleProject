@@ -105,6 +105,26 @@ calibrated against the schema: a fully expanded `readingAggregates` analyses at 
 limit admits any single query while rejecting the same aggregation aliased three times over. Introspection and the Nitro IDE are
 Development-only; `GET` is refused everywhere.
 
+A concurrency limit — 32 executing and 64 queued by default, set in `RateLimiting` below — bounds
+the endpoint; past it the endpoint answers **429** with a GraphQL-shaped error body. That bound is separate from the cost ceiling and not implied by
+it — ten thousand cheap `locations` queries each analyse well under 5000 and still exhaust the
+connection pool. The limit is unpartitioned: behind the proxy every browser arrives from one
+address, so a per-client partition would either be one bucket shared by all of them or rest on a
+header a direct caller can forge.
+
+### Caching
+
+`readingAggregates` and the catalogue are cached in memory only — `HybridCache` with no
+`IDistributedCache` registered — for the lifetimes the `Cache` section sets. Aggregate bounds snap
+outward to the interval's period boundaries, so the cache key holds still for a whole period
+however often the page refetches, and every browser watching one chart collapses onto a single
+`GROUP BY`. Snapping also makes the first period whole: `date_trunc` labels a partial bucket with
+its start, which a chart then draws as a full one.
+
+`readings` and `latestReadings` are not cached. `latestReadings` is what the dashboard computes
+freshness from, so a cached copy would have the staleness indicator report an age derived from a
+timestamp the cache froze; `readings` is keyed by an opaque cursor, which no two callers share.
+
 Errors always reach the client with a message and an `extensions.code`
 (`BAD_USER_INPUT`, `NOT_FOUND`, `SERVICE_UNAVAILABLE`, `INTERNAL_SERVER_ERROR`) and are always
 logged. Stack traces and raw exception text are **never** returned, in any environment — a
@@ -124,6 +144,27 @@ details. An unexpected failure returns a correlation id that also appears in the
 
 The connection string **must** pin `Options=-c timezone=UTC`. `date_trunc` truncates in the session
 time zone, so without it aggregation periods would follow the server's local midnight.
+
+### `Cache`
+
+| Key | Description | Default |
+|---|---|---|
+| `AggregateSeconds` | How long a `readingAggregates` result stays usable. | `20` |
+| `CatalogueSeconds` | How long `sensors` and `locations` stay usable. | `60` |
+
+Keeping `AggregateSeconds` under the injector's polling interval leaves a series at most one poll
+behind. Unlike the schema's guard rails these are tuning, not invariants: a stale chart is a
+judgement call, not a denial-of-service hole.
+
+### `RateLimiting`
+
+| Key | Description | Default |
+|---|---|---|
+| `PermitLimit` | Operations that may execute at once. | `32` |
+| `QueueLimit` | How many may wait for a permit before the rest get a 429. | `64` |
+
+Size `PermitLimit` below the database connection pool (Npgsql's default is 100): past the pool,
+requests queue there instead and fail at the execution timeout rather than with a 429.
 
 ### `Cors`
 

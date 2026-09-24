@@ -1,5 +1,6 @@
 namespace NotificationService.IntegrationTests.Hubs;
 
+using Confluent.Kafka;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.SignalR.Client;
@@ -9,7 +10,10 @@ using Microsoft.Extensions.DependencyInjection;
 using NotificationService.Authentication;
 using NotificationService.Hubs;
 using NotificationService.Messaging;
+using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Globalization;
+using System.Text;
 using System.Text.Json;
 using System.Threading.Channels;
 
@@ -61,6 +65,49 @@ public sealed class ReadingsHubTests(KafkaFixture kafka) : IClassFixture<KafkaFi
         var sensor = Assert.Single(received.GetProperty("sensors").EnumerateArray());
         Assert.Equal("Kitchen", sensor.GetProperty("location").GetString());
         Assert.Equal("air_quality", sensor.GetProperty("sensorType").GetString());
+    }
+
+    [Fact]
+    public async Task Consume_EventCarryingATrace_BroadcastsAsAChildOfIt()
+    {
+        var topic = NewTopic();
+        var trace = ActivityTraceId.CreateRandom();
+        var span = ActivitySpanId.CreateRandom();
+        var broadcasts = new ConcurrentBag<Activity>();
+        using var listener = new ActivityListener
+        {
+            ShouldListenTo = source => source.Name == KafkaConsumerService.ActivitySourceName,
+            Sample = (ref ActivityCreationOptions<ActivityContext> _) =>
+                ActivitySamplingResult.AllData,
+            ActivityStopped = broadcasts.Add,
+        };
+        ActivitySource.AddActivityListener(listener);
+        await kafka.ProduceAsync(topic, Event(readingCount: 999, location: "Backlog"));
+
+        await using var app = new NotificationApp(kafka.BootstrapAddress, topic);
+        await using var client = await ConnectAsync(app);
+        await WaitForPartitionAssignmentAsync(app);
+        await kafka.ProduceAsync(
+            topic,
+            new Headers
+            {
+                {
+                    "traceparent",
+                    Encoding.UTF8.GetBytes($"00-{trace.ToHexString()}-{span.ToHexString()}-01")
+                },
+            },
+            Event(readingCount: 18, location: "Kitchen")
+        );
+        await ReadAsync(client.Events);
+
+        var deadline = DateTimeOffset.UtcNow + TimeSpan.FromSeconds(10);
+        while (!broadcasts.Any(activity => activity.TraceId == trace) && DateTimeOffset.UtcNow < deadline)
+        {
+            await Task.Delay(50, TestContext.Current.CancellationToken);
+        }
+
+        var broadcast = Assert.Single(broadcasts, activity => activity.TraceId == trace);
+        Assert.Equal(span, broadcast.ParentSpanId);
     }
 
     [Fact]
@@ -171,7 +218,7 @@ public sealed class ReadingsHubTests(KafkaFixture kafka) : IClassFixture<KafkaFi
     /// </summary>
     private static async Task WaitForPartitionAssignmentAsync(NotificationApp app)
     {
-        var heartbeat = app.Services.GetRequiredService<ConsumerHeartbeat>();
+        var heartbeat = app.Services.GetRequiredService<IConsumerHeartbeat>();
         var deadline = DateTimeOffset.UtcNow + TimeSpan.FromSeconds(60);
 
         while (!heartbeat.HasAssignment && DateTimeOffset.UtcNow < deadline)

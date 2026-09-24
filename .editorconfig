@@ -258,4 +258,6 @@ dotnet_diagnostic.S3902.severity = warning
 dotnet_diagnostic.S4004.severity = warning
 dotnet_diagnostic.S4058.severity = warning
 dotnet_diagnostic.S6513.severity = warning
+# Reported by SonarQube from the .NET analyzers, where it defaults to a suggestion.
+dotnet_diagnostic.CA1861.severity = warning
 dotnet_diagnostic.S6566.severity = warning

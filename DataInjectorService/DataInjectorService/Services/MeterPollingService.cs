@@ -24,10 +24,16 @@ public sealed class MeterPollingService(
     IWeakAppService weakAppService,
     IKafkaProducer kafkaProducer,
     IOptions<WeakAppOptions> options,
+    IOptions<KafkaOptions> kafkaOptions,
     ILogger<MeterPollingService> logger,
     DataInjectorMetrics metrics
 ) : BackgroundService
 {
+    public const string ActivitySourceName = DataInjectorMetrics.MeterName;
+
+    /// <summary>One span per poll cycle, so every reading published in it shares a trace id.</summary>
+    private static readonly ActivitySource Activities = new(ActivitySourceName);
+
     private readonly WeakAppOptions options = options.Value;
 
     /// <inheritdoc/>
@@ -39,32 +45,42 @@ public sealed class MeterPollingService(
         {
             var nextDelay = TimeSpan.FromSeconds(this.options.PollingIntervalSeconds);
             var stopwatch = Stopwatch.StartNew();
+            var cancelled = false;
 
-            try
+            // Scoped to the cycle rather than the loop body, so the span excludes the delay.
+            using (Activities.StartActivity("poll meters"))
             {
-                var result = await weakAppService.GetMetersAsync(stoppingToken);
-                metrics.WeakAppRequests.Add(
-                    1,
-                    new KeyValuePair<string, object?>(
-                        "outcome",
-                        result.IsSuccess ? "success" : "failure"
-                    )
-                );
-                nextDelay = result.IsSuccess
-                    ? await this.PublishReadingsAsync(result.Value, stoppingToken)
-                    : this.HandleFailure(result.Error, nextDelay);
+                try
+                {
+                    var result = await weakAppService.GetMetersAsync(stoppingToken);
+                    metrics.WeakAppRequests.Add(
+                        1,
+                        new KeyValuePair<string, object?>(
+                            "outcome",
+                            result.IsSuccess ? "success" : "failure"
+                        )
+                    );
+                    nextDelay = result.IsSuccess
+                        ? await this.PublishReadingsAsync(result.Value, stoppingToken)
+                        : this.HandleFailure(result.Error, nextDelay);
+                }
+                catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+                {
+                    cancelled = true;
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    logger.UnhandledPollingException(ex);
+                }
+                finally
+                {
+                    metrics.PollingCycleDuration.Record(stopwatch.Elapsed.TotalSeconds);
+                }
             }
-            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+
+            if (cancelled)
             {
                 break;
-            }
-            catch (Exception ex) when (ex is not OperationCanceledException)
-            {
-                logger.UnhandledPollingException(ex);
-            }
-            finally
-            {
-                metrics.PollingCycleDuration.Record(stopwatch.Elapsed.TotalSeconds);
             }
 
             await SafeDelayAsync(nextDelay, stoppingToken);
@@ -90,18 +106,29 @@ public sealed class MeterPollingService(
         CancellationToken cancellationToken
     )
     {
+        var published = 0;
+
         // Every reading in a poll belongs to a distinct sensor, and therefore to a distinct
         // message key, so publishing them concurrently preserves the per-key ordering guarantee
         // the key exists to provide while avoiding one broker round-trip per reading.
-        var outcomes = await Task.WhenAll(
-            readings.Select(reading => this.TryPublishAsync(reading, cancellationToken))
+        await Parallel.ForEachAsync(
+            readings,
+            new ParallelOptions
+            {
+                MaxDegreeOfParallelism = kafkaOptions.Value.MaxConcurrentPublishes,
+                CancellationToken = cancellationToken,
+            },
+            async (reading, token) =>
+            {
+                if (await this.TryPublishAsync(reading, token))
+                {
+                    Interlocked.Increment(ref published);
+                }
+            }
         );
 
-        var published = outcomes.Count(outcome => outcome);
-        var failed = outcomes.Length - published;
-
         metrics.MeterReadingsPolled.Add(readings.Count);
-        logger.CycleComplete(published, failed, readings.Count);
+        logger.CycleComplete(published, readings.Count - published, readings.Count);
         return TimeSpan.FromSeconds(this.options.PollingIntervalSeconds);
     }
 

@@ -9,6 +9,7 @@ using GraphQLGatewayService.Infrastructure.Telemetry;
 using HotChocolate;
 using HotChocolate.Execution;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Hosting;
@@ -24,6 +25,12 @@ public sealed class GraphQLExecutionTests(PostgresFixture fixture) : IClassFixtu
     private static readonly DateTimeOffset Start = UtcInstant.Normalize(
         new DateTimeOffset(2026, 5, 1, 0, 0, 0, TimeSpan.Zero)
     );
+
+    // Fixed bounds, so the cache key cannot move between two executions.
+    private const string AggregateInSeedWindow = """
+        { readingAggregates(metric: ENERGY_KWH, interval: HOUR,
+            where: { from: "2026-04-30T00:00:00Z", to: "2026-05-02T00:00:00Z" }) { location } }
+        """;
 
     [Fact]
     public async Task Execute_Sensors_ReturnsTheCatalogue()
@@ -219,6 +226,49 @@ public sealed class GraphQLExecutionTests(PostgresFixture fixture) : IClassFixtu
     }
 
     [Fact]
+    public async Task Execute_SameAggregateWithinItsLifetime_ServesTheCachedSeries()
+    {
+        await this.SeedAsync();
+        await using var provider = this.BuildProvider();
+
+        var first = await RunAsync(provider, AggregateInSeedWindow);
+        await this.SeedOfficeAsync();
+        var second = await RunAsync(provider, AggregateInSeedWindow);
+
+        Assert.Equal(2, Data(first).GetProperty("readingAggregates").GetArrayLength());
+        Assert.Equal(2, Data(second).GetProperty("readingAggregates").GetArrayLength());
+    }
+
+    [Fact]
+    public async Task Execute_SameAggregateAfterItsLifetime_QueriesAgain()
+    {
+        await this.SeedAsync();
+        await using var provider = this.BuildProvider(
+            new Dictionary<string, string?> { ["Cache:AggregateSeconds"] = "1" }
+        );
+
+        await RunAsync(provider, AggregateInSeedWindow);
+        await this.SeedOfficeAsync();
+        await Task.Delay(TimeSpan.FromSeconds(1.5), TestContext.Current.CancellationToken);
+        var refreshed = await RunAsync(provider, AggregateInSeedWindow);
+
+        Assert.Equal(3, Data(refreshed).GetProperty("readingAggregates").GetArrayLength());
+    }
+
+    [Fact]
+    public async Task Execute_LocationsWithinTheirLifetime_ServeTheCachedCatalogue()
+    {
+        await this.SeedAsync();
+        await using var provider = this.BuildProvider();
+
+        await RunAsync(provider, "{ locations }");
+        await this.SeedOfficeAsync();
+        var second = await RunAsync(provider, "{ locations }");
+
+        Assert.Equal(2, Data(second).GetProperty("locations").GetArrayLength());
+    }
+
+    [Fact]
     public async Task Execute_Introspection_IsRejectedOutsideDevelopment()
     {
         await this.SeedAsync();
@@ -287,18 +337,12 @@ public sealed class GraphQLExecutionTests(PostgresFixture fixture) : IClassFixtu
         string environmentName = "Development"
     )
     {
-        var services = new ServiceCollection();
-        services.AddLogging();
-        services.AddSingleton<GraphQLGatewayMetrics>();
-        services.AddDbContext<MeterReadingsDbContext>(options =>
-            options
-                .UseNpgsql(fixture.ConnectionString)
-                .UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking)
-        );
-        services.AddHealthChecks().AddDbContextCheck<MeterReadingsDbContext>("database");
-        services.AddGraphQLApi(new TestEnvironment(environmentName));
+        await using var provider = this.BuildProvider(environmentName: environmentName);
+        return await RunAsync(provider, query);
+    }
 
-        await using var provider = services.BuildServiceProvider();
+    private static async Task<JsonElement> RunAsync(IServiceProvider provider, string query)
+    {
         var executor = await provider
             .GetRequiredService<IRequestExecutorProvider>()
             .GetExecutorAsync(cancellationToken: TestContext.Current.CancellationToken);
@@ -313,6 +357,33 @@ public sealed class GraphQLExecutionTests(PostgresFixture fixture) : IClassFixtu
         // Cloned so the element outlives the document this method disposes.
         return document.RootElement.Clone();
     }
+
+    private ServiceProvider BuildProvider(
+        IDictionary<string, string?>? settings = null,
+        string environmentName = "Development"
+    )
+    {
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddSingleton<GraphQLGatewayMetrics>();
+        services.AddDbContext<MeterReadingsDbContext>(options =>
+            options
+                .UseNpgsql(fixture.ConnectionString)
+                .UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking)
+        );
+        services.AddHealthChecks().AddDbContextCheck<MeterReadingsDbContext>("database");
+        services.AddGraphQLApi(
+            new ConfigurationBuilder().AddInMemoryCollection(settings ?? new Dictionary<string, string?>()).Build(),
+            new TestEnvironment(environmentName)
+        );
+
+        return services.BuildServiceProvider();
+    }
+
+    private async Task SeedOfficeAsync() =>
+        await fixture.SeedAsync(
+            Energy(PostgresFixture.Sensor("Office", SensorType.Energy), Start.AddMinutes(1), 5)
+        );
 
     private static EnergyReadingRow Energy(SensorRow sensor, DateTimeOffset at, double kwh) =>
         new()

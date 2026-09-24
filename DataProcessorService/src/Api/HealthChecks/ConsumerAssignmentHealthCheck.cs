@@ -11,7 +11,7 @@ using Microsoft.Extensions.Diagnostics.HealthChecks;
 /// than the condition it reports.
 /// </para>
 /// </summary>
-public sealed class ConsumerAssignmentHealthCheck(ConsumerHeartbeat heartbeat) : IHealthCheck
+public sealed class ConsumerAssignmentHealthCheck(IConsumerHeartbeat heartbeat) : IHealthCheck
 {
     /// <inheritdoc/>
     public Task<HealthCheckResult> CheckHealthAsync(

@@ -84,6 +84,9 @@ the pinned `container_name` otherwise leaves the old container on the old image:
 docker compose -f docker-compose.yml -f docker-compose.build.yml down && docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
 ```
 
+The overlay also scales watchtower to zero, which would otherwise swap the build back to the last
+published image within a minute.
+
 ## CI/CD and branching
 
 Each service and the frontend has its own workflow in [`.github/workflows`](.github/workflows),
@@ -100,6 +103,18 @@ visualized in Grafana. Bring the stack up with `docker compose up -d` and open:
 
 - Prometheus: http://localhost:9090
 - Grafana: http://localhost:3000 (anonymous viewer access, or `admin`/`admin`)
+
+### Correlating a reading across services
+
+Every log line starts with the ambient trace id, or `[]` where there is none — host start-up and
+anything outside a request or a poll cycle. The injector opens one span per poll cycle and writes
+its trace onto each Kafka message; the processor links the batch it assembles back to the traces it
+was built from and logs which ones; the notification service broadcasts under the processor's
+trace. One id out of the injector's log therefore leads to the batch that ingested it and on to the
+browser push.
+
+No exporter is configured, so nothing collects the spans themselves — the ids in the logs are what
+this buys.
 
 ### Pattern for adding a new service
 

@@ -31,6 +31,17 @@ public sealed class UtcInstantTests
     }
 
     [Fact]
+    public void Normalize_NullValue_ReturnsNull() => Assert.Null(UtcInstant.Normalize(null));
+
+    [Fact]
+    public void Normalize_NullableWithOffset_ConvertsToUtc()
+    {
+        DateTimeOffset? value = new DateTimeOffset(2026, 5, 1, 15, 0, 0, TimeSpan.FromHours(3));
+
+        Assert.Equal(new DateTimeOffset(2026, 5, 1, 12, 0, 0, TimeSpan.Zero), UtcInstant.Normalize(value));
+    }
+
+    [Fact]
     public void Normalize_AlreadyNormalized_IsUnchanged()
     {
         var value = new DateTimeOffset(2026, 5, 1, 0, 0, 0, TimeSpan.Zero);

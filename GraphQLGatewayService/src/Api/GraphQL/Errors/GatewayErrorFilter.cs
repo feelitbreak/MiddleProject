@@ -2,6 +2,7 @@ namespace GraphQLGatewayService.Api.GraphQL.Errors;
 
 using GraphQLGatewayService.Infrastructure.Telemetry;
 using HotChocolate.Execution;
+using System.Diagnostics;
 
 /// <summary>
 /// Logs every GraphQL error and keeps internal detail out of the response. Errors carrying an
@@ -42,7 +43,11 @@ public sealed class GatewayErrorFilter(
             return error;
         }
 
-        var correlationId = Guid.NewGuid().ToString("N");
+        // The request's trace id, so the id a client quotes heads every log line of that request.
+        var correlationId =
+            Activity.Current is { } activity
+                ? activity.TraceId.ToHexString()
+                : Guid.NewGuid().ToString("N");
 
         if (logger.IsEnabled(LogLevel.Error))
         {

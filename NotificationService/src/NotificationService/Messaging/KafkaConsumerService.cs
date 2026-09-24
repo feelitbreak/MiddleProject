@@ -7,6 +7,9 @@ using NotificationService.Configuration;
 using NotificationService.Contracts;
 using NotificationService.Hubs;
 using NotificationService.Telemetry;
+using OpenTelemetry.Context.Propagation;
+using System.Diagnostics;
+using System.Text;
 
 /// <summary>
 /// Consumes the readings-persisted topic and broadcasts each event to connected clients.
@@ -18,7 +21,7 @@ using NotificationService.Telemetry;
 /// </summary>
 public sealed class KafkaConsumerService(
     IHubContext<ReadingsHub> hubContext,
-    ConsumerHeartbeat heartbeat,
+    IConsumerHeartbeat heartbeat,
     NotificationMetrics metrics,
     IOptions<KafkaOptions> options,
     ILogger<KafkaConsumerService> logger
@@ -29,6 +32,10 @@ public sealed class KafkaConsumerService(
     /// broadcast between polls and must stay responsive to shutdown.
     /// </summary>
     private static readonly TimeSpan PollTimeout = TimeSpan.FromMilliseconds(100);
+
+    public const string ActivitySourceName = NotificationMetrics.MeterName;
+
+    private static readonly ActivitySource Activities = new(ActivitySourceName);
 
     private readonly KafkaOptions options = options.Value;
 
@@ -134,6 +141,15 @@ public sealed class KafkaConsumerService(
         CancellationToken stoppingToken
     )
     {
+        // One message at a time, so the processor's trace is a parent rather than a link.
+        using var activity = Activities.StartActivity(
+            "broadcast readings",
+            ActivityKind.Consumer,
+            Propagators
+                .DefaultTextMapPropagator.Extract(default, result.Message.Headers, ReadHeader)
+                .ActivityContext
+        );
+
         metrics.EventsConsumed.Add(1);
 
         var decoded = ReadingsPersistedDecoder.Decode(result.Message.Value);
@@ -180,6 +196,11 @@ public sealed class KafkaConsumerService(
             logger.CommitFailed(ex, ex.Error.Reason);
         }
     }
+
+    private static IEnumerable<string> ReadHeader(Headers? headers, string key) =>
+        headers is not null && headers.TryGetLastBytes(key, out var value)
+            ? [Encoding.UTF8.GetString(value)]
+            : [];
 
     private void RecordLag(ReadingsPersistedMessage message)
     {

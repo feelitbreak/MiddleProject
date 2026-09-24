@@ -8,6 +8,8 @@ using DataInjectorService.Telemetry;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Moq;
+using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Diagnostics.Metrics;
 
 /// <summary>
@@ -212,6 +214,161 @@ public sealed class MeterPollingServiceTests
     /// Attaches a <see cref="MeterListener"/> to <paramref name="metrics"/>'s meter and returns
     /// the list of <c>outcome</c> tag values recorded against <see cref="DataInjectorMetrics.WeakAppRequests"/>.
     /// </summary>
+    [Fact]
+    public async Task ExecuteAsync_OnePoll_PublishesEveryReadingUnderOneTrace()
+    {
+        using var listener = ListenToPolls();
+        var serviceMock = new Mock<IWeakAppService>();
+        using var cts = new CancellationTokenSource();
+        SetupSequenceWithCancel(
+            serviceMock,
+            cts,
+            Result.Success<IReadOnlyList<MeterReading>>(
+                [MakeReading("energy", "A"), MakeReading("energy", "B"), MakeReading("energy", "C")]
+            )
+        );
+        var traces = new ConcurrentBag<ActivityTraceId>();
+        var producer = ProducerSignallingAfter(
+            3,
+            _ => traces.Add(Activity.Current?.TraceId ?? default),
+            out var done
+        );
+
+        await RunUntilAsync(BuildService(serviceMock.Object, producer), done);
+
+        Assert.Equal(3, traces.Count);
+        Assert.Single(traces.Distinct());
+        Assert.NotEqual(default, traces.First());
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_SuccessivePolls_GetTheirOwnTraces()
+    {
+        using var listener = ListenToPolls();
+        var serviceMock = new Mock<IWeakAppService>();
+        using var cts = new CancellationTokenSource();
+        SetupSequenceWithCancel(
+            serviceMock,
+            cts,
+            Result.Success<IReadOnlyList<MeterReading>>([MakeReading("energy", "First")]),
+            Result.Success<IReadOnlyList<MeterReading>>([MakeReading("energy", "Second")])
+        );
+        var traces = new ConcurrentDictionary<string, ActivityTraceId>();
+        var producer = ProducerSignallingAfter(
+            2,
+            reading => traces[reading.Name] = Activity.Current?.TraceId ?? default,
+            out var done
+        );
+
+        await RunUntilAsync(BuildService(serviceMock.Object, producer), done);
+
+        Assert.NotEqual(traces["First"], traces["Second"]);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_ManyReadings_PublishesAtMostTheConfiguredNumberAtOnce()
+    {
+        var serviceMock = new Mock<IWeakAppService>();
+        using var cts = new CancellationTokenSource();
+        SetupSequenceWithCancel(
+            serviceMock,
+            cts,
+            Result.Success<IReadOnlyList<MeterReading>>(
+                [.. Enumerable.Range(0, 10).Select(i => MakeReading("energy", $"S{i}"))]
+            )
+        );
+        var inFlight = 0;
+        var peak = 0;
+        var published = 0;
+        var done = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var producer = new Mock<IKafkaProducer>();
+        producer
+            .Setup(p => p.ProduceAsync(It.IsAny<MeterReading>(), It.IsAny<CancellationToken>()))
+            .Returns(async () =>
+            {
+                InterlockedMax(ref peak, Interlocked.Increment(ref inFlight));
+                await Task.Delay(20);
+                Interlocked.Decrement(ref inFlight);
+
+                if (Interlocked.Increment(ref published) == 10)
+                {
+                    done.TrySetResult();
+                }
+            });
+
+        var service = BuildService(
+            serviceMock.Object,
+            producer.Object,
+            kafkaOptions: new KafkaOptions { MaxConcurrentPublishes = 2 }
+        );
+        await RunUntilAsync(service, done.Task);
+
+        Assert.Equal(2, peak);
+    }
+
+    private static ActivityListener ListenToPolls()
+    {
+        var listener = new ActivityListener
+        {
+            ShouldListenTo = source => source.Name == MeterPollingService.ActivitySourceName,
+            Sample = (ref ActivityCreationOptions<ActivityContext> _) =>
+                ActivitySamplingResult.AllData,
+        };
+        ActivitySource.AddActivityListener(listener);
+        return listener;
+    }
+
+    private static IKafkaProducer ProducerSignallingAfter(
+        int count,
+        Action<MeterReading> onPublish,
+        out Task done
+    )
+    {
+        var signal = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var published = 0;
+        var producer = new Mock<IKafkaProducer>();
+        producer
+            .Setup(p => p.ProduceAsync(It.IsAny<MeterReading>(), It.IsAny<CancellationToken>()))
+            .Callback<MeterReading, CancellationToken>(
+                (reading, _) =>
+                {
+                    onPublish(reading);
+
+                    if (Interlocked.Increment(ref published) == count)
+                    {
+                        signal.TrySetResult();
+                    }
+                }
+            )
+            .Returns(Task.CompletedTask);
+        done = signal.Task;
+        return producer.Object;
+    }
+
+    private static async Task RunUntilAsync(MeterPollingService service, Task done)
+    {
+        await service.StartAsync(TestContext.Current.CancellationToken);
+        await done.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+        await service.StopAsync(TestContext.Current.CancellationToken);
+    }
+
+    private static void InterlockedMax(ref int target, int value)
+    {
+        var current = Volatile.Read(ref target);
+
+        while (value > current)
+        {
+            var observed = Interlocked.CompareExchange(ref target, value, current);
+
+            if (observed == current)
+            {
+                return;
+            }
+
+            current = observed;
+        }
+    }
+
     private static List<string> CaptureWeakAppRequestOutcomes(DataInjectorMetrics metrics)
     {
         var outcomes = new List<string>();
@@ -273,7 +430,8 @@ public sealed class MeterPollingServiceTests
         IWeakAppService weakAppService,
         IKafkaProducer kafkaProducer,
         WeakAppOptions? options = null,
-        DataInjectorMetrics? metrics = null
+        DataInjectorMetrics? metrics = null,
+        KafkaOptions? kafkaOptions = null
     )
     {
         var opts = Options.Create(options ?? new WeakAppOptions { PollingIntervalSeconds = 0 });
@@ -281,6 +439,7 @@ public sealed class MeterPollingServiceTests
             weakAppService,
             kafkaProducer,
             opts,
+            Options.Create(kafkaOptions ?? new KafkaOptions()),
             NullLogger<MeterPollingService>.Instance,
             metrics ?? new DataInjectorMetrics()
         );

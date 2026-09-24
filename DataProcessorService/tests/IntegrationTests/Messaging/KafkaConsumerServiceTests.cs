@@ -15,6 +15,10 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using OpenTelemetry;
+using OpenTelemetry.Trace;
+using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
 
@@ -32,6 +36,10 @@ public sealed class KafkaConsumerServiceTests(PostgresFixture postgres, KafkaFix
     : IClassFixture<PostgresFixture>,
         IClassFixture<KafkaFixture>
 {
+    private static readonly string[] FirstPollSensors = ["Kitchen", "Garage", "Office"];
+
+    private static readonly string[] SecondPollSensors = ["Hall", "Bedroom"];
+
     [Fact]
     public async Task Consume_ValidMessages_PersistsEveryReading()
     {
@@ -272,6 +280,100 @@ public sealed class KafkaConsumerServiceTests(PostgresFixture postgres, KafkaFix
         Assert.Equal("bad:1", Encoding.UTF8.GetString(message.Message.Key));
     }
 
+    [Fact]
+    public async Task Consume_BatchFromTwoPolls_LinksEachPollOnceAndAnnouncesUnderTheBatchTrace()
+    {
+        await postgres.ResetAsync();
+        var topic = NewTopic();
+        var persistedTopic = $"{topic}-persisted";
+        var firstPoll = ActivityTraceId.CreateRandom();
+        var secondPoll = ActivityTraceId.CreateRandom();
+        var collectedAt = DateTimeOffset.UtcNow;
+        using var tracing = Sdk.CreateTracerProviderBuilder().Build();
+        var batches = new ConcurrentBag<Activity>();
+        using var listener = ListenToBatches(batches);
+
+        await kafka.ProduceAsync(
+            topic,
+            [
+                .. FirstPollSensors.Select(name =>
+                    (
+                        $"energy:{name}",
+                        Reading("energy", name, """{"energy":1.5}""", collectedAt),
+                        (Headers?)TraceHeaders(firstPoll)
+                    )
+                ),
+                .. SecondPollSensors.Select(name =>
+                    (
+                        $"energy:{name}",
+                        Reading("energy", name, """{"energy":2.5}""", collectedAt),
+                        (Headers?)TraceHeaders(secondPoll)
+                    )
+                ),
+            ]
+        );
+
+        await RunConsumerUntilAsync(
+            topic,
+            () => Task.FromResult(kafka.Consume(persistedTopic, count: 1, TimeSpan.FromSeconds(1)).Count > 0)
+        );
+
+        // Batch boundaries depend on fetch timing and redelivery, so this holds for any split.
+        var ours = batches
+            .Where(batch =>
+                batch.Links.Any(link =>
+                    link.Context.TraceId == firstPoll || link.Context.TraceId == secondPoll
+                )
+            )
+            .ToList();
+        Assert.All(
+            ours,
+            batch =>
+                Assert.Equal(
+                    batch.Links.Count(),
+                    batch.Links.Select(link => link.Context.TraceId).Distinct().Count()
+                )
+        );
+        var linked = ours.SelectMany(batch => batch.Links.Select(link => link.Context.TraceId))
+            .ToHashSet();
+        Assert.Equal(2, linked.Count);
+        Assert.Contains(firstPoll, linked);
+        Assert.Contains(secondPoll, linked);
+
+        var announced = kafka.Consume(persistedTopic, count: 1, TimeSpan.FromSeconds(10))[0];
+        var traceParent = HeaderValue(announced, "traceparent") ?? string.Empty;
+        Assert.Contains(
+            ours,
+            batch =>
+                traceParent.StartsWith(
+                    $"00-{batch.TraceId.ToHexString()}-",
+                    StringComparison.Ordinal
+                )
+        );
+    }
+
+    private static Headers TraceHeaders(ActivityTraceId trace) =>
+        new()
+        {
+            {
+                "traceparent",
+                Encoding.UTF8.GetBytes($"00-{trace.ToHexString()}-{ActivitySpanId.CreateRandom().ToHexString()}-01")
+            },
+        };
+
+    private static ActivityListener ListenToBatches(ConcurrentBag<Activity> batches)
+    {
+        var listener = new ActivityListener
+        {
+            ShouldListenTo = source => source.Name == KafkaConsumerService.ActivitySourceName,
+            Sample = (ref ActivityCreationOptions<ActivityContext> _) =>
+                ActivitySamplingResult.AllData,
+            ActivityStopped = batches.Add,
+        };
+        ActivitySource.AddActivityListener(listener);
+        return listener;
+    }
+
     private static string NewTopic() => $"meter-readings-{Guid.NewGuid():N}";
 
     private static string NewGroup() => $"data-processor-{Guid.NewGuid():N}";
@@ -369,7 +471,7 @@ public sealed class KafkaConsumerServiceTests(PostgresFixture postgres, KafkaFix
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddSingleton<ISensorRegistry, SensorRegistry>();
         services.AddSingleton<DataProcessorMetrics>();
-        services.AddSingleton<ConsumerHeartbeat>();
+        services.AddSingleton<IConsumerHeartbeat, ConsumerHeartbeat>();
         services.AddSingleton<IDeadLetterProducer, DeadLetterProducer>();
         services.AddSingleton<IReadingsPersistedProducer, ReadingsPersistedProducer>();
 

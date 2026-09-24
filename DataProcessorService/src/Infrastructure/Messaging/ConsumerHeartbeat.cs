@@ -9,7 +9,7 @@ namespace DataProcessorService.Infrastructure.Messaging;
 /// happily while ingesting nothing. The liveness probe reads this instead.
 /// </para>
 /// </summary>
-public sealed class ConsumerHeartbeat
+public sealed class ConsumerHeartbeat : IConsumerHeartbeat
 {
     private long lastIterationTicks = DateTimeOffset.UtcNow.UtcTicks;
     private volatile bool hasAssignment;

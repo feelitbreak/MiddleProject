@@ -9,10 +9,10 @@ import type { TypedDocumentNode as DocumentNode } from '@graphql-typed-document-
  * metric already fixes the sensor type, so one here could only contradict it.
  */
 export type AggregateFilterInput = {
-  /** Inclusive lower bound. Defaults to a window suited to the interval. */
+  /** Inclusive lower bound, widened back to its period start. Defaults by interval. */
   from?: string | null | undefined;
   location?: string | null | undefined;
-  /** Exclusive upper bound. Defaults to now. */
+  /** Exclusive upper bound, widened forward to the next period start. Defaults to now. */
   to?: string | null | undefined;
 };
 

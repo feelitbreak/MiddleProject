@@ -6,9 +6,11 @@ on:
       - main
     paths:
       - 'DataProcessorService/**'
+      - '.editorconfig'
   pull_request:
     paths:
       - 'DataProcessorService/**'
+      - '.editorconfig'
 
 jobs:
   build:

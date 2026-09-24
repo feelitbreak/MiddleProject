@@ -46,7 +46,9 @@ Applies to every project here — .NET services, the React app when it lands, sc
 - **Prefer built-in framework APIs over new helper classes.** Before adding a helper, converter or
   extension, check whether the BCL, EF Core, ASP.NET Core or `System.Text.Json` already does it.
   Reach for a helper only when nothing built-in fits, and say why in a comment.
-- Don't add speculative abstractions. One implementation means no interface yet.
+- Injected services with behaviour sit behind an interface, even with one implementation.
+  Metrics classes and framework-derived types (handlers, filters, hubs, health checks, background
+  services) don't need one. Beyond that, no speculative abstractions.
 - Verify claims about framework behaviour by running the code, not from memory.
 
 ## .NET services
@@ -78,8 +80,8 @@ skimming for the word "error".
 `SonarAnalyzer.CSharp` is referenced by every project so the SonarQube
 rules CI enforces also run locally. Some Sonar rules ship **disabled by default** in that package
 while the server's quality profile has them on — S107 is one — so the ones we rely on are enabled
-explicitly in `.editorconfig`. If SonarQube reports a rule the local build did not, enable it there
-rather than fixing it blind.
+explicitly in the root `.editorconfig`, which every .NET service shares. If SonarQube reports a
+rule the local build did not, enable it there rather than fixing it blind.
 
 ## Frontend (React + TypeScript)
 
