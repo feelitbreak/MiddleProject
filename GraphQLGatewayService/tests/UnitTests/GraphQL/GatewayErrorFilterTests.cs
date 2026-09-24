@@ -6,6 +6,7 @@ using HotChocolate;
 using Microsoft.Extensions.Diagnostics.Metrics.Testing;
 using Microsoft.Extensions.Logging;
 using Moq;
+using System.Diagnostics;
 
 /// <summary>
 /// The filter is the only thing keeping internal detail out of a response, so these tests assert
@@ -51,6 +52,16 @@ public sealed class GatewayErrorFilterTests
         Assert.NotNull(filtered.Extensions);
         Assert.True(filtered.Extensions.TryGetValue("correlationId", out var correlationId));
         Assert.False(string.IsNullOrWhiteSpace(correlationId as string));
+    }
+
+    [Fact]
+    public void OnError_InsideARequestTrace_UsesTheTraceIdAsTheCorrelationId()
+    {
+        using var request = new Activity("request").SetIdFormat(ActivityIdFormat.W3C).Start();
+
+        var filtered = CreateFilter().OnError(FailedError());
+
+        Assert.Equal(request.TraceId.ToHexString(), filtered.Extensions!["correlationId"]);
     }
 
     [Fact]

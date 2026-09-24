@@ -4,19 +4,18 @@ import { relayStylePagination } from '@apollo/client/utilities';
 import { GRAPHQL_URL } from './config';
 
 /** Network failures only: a GraphQL error or a 4xx would just repeat, and a retried 429 is a storm. */
+export function shouldRetry(error: unknown): boolean {
+  const status =
+    typeof error === 'object' && error !== null && 'statusCode' in error
+      ? error.statusCode
+      : undefined;
+  return typeof status !== 'number' || status >= 500;
+}
+
 const retryLink = new RetryLink({
   delay: { initial: 300, max: 3000, jitter: true },
-  attempts: {
-    // Counts the first request, so this is two retries.
-    max: 3,
-    retryIf: (error: unknown) => {
-      const status =
-        typeof error === 'object' && error !== null && 'statusCode' in error
-          ? error.statusCode
-          : undefined;
-      return typeof status !== 'number' || status >= 500;
-    },
-  },
+  // Counts the first request, so this is two retries.
+  attempts: { max: 3, retryIf: shouldRetry },
 });
 
 export const apolloClient = new ApolloClient({

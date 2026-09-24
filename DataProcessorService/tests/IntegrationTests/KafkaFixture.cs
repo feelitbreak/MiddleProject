@@ -22,9 +22,14 @@ public sealed class KafkaFixture : IAsyncLifetime
     /// <summary>
     /// Publishes raw message bodies to a topic, mirroring what DataInjectorService produces.
     /// </summary>
-    public async Task<IReadOnlyList<DeliveryResult<byte[], byte[]>>> ProduceAsync(
+    public Task<IReadOnlyList<DeliveryResult<byte[], byte[]>>> ProduceAsync(
         string topic,
         IEnumerable<(string Key, byte[] Body)> messages
+    ) => this.ProduceAsync(topic, messages.Select(message => (message.Key, message.Body, (Headers?)null)));
+
+    public async Task<IReadOnlyList<DeliveryResult<byte[], byte[]>>> ProduceAsync(
+        string topic,
+        IEnumerable<(string Key, byte[] Body, Headers? Headers)> messages
     )
     {
         var config = new ProducerConfig
@@ -38,7 +43,7 @@ public sealed class KafkaFixture : IAsyncLifetime
 
         var results = new List<DeliveryResult<byte[], byte[]>>();
 
-        foreach (var (key, body) in messages)
+        foreach (var (key, body, headers) in messages)
         {
             results.Add(
                 await producer.ProduceAsync(
@@ -47,6 +52,7 @@ public sealed class KafkaFixture : IAsyncLifetime
                     {
                         Key = System.Text.Encoding.UTF8.GetBytes(key),
                         Value = body,
+                        Headers = headers,
                     }
                 )
             );

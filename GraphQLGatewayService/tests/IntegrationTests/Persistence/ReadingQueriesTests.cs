@@ -143,6 +143,47 @@ public sealed class ReadingQueriesTests(PostgresFixture fixture) : IClassFixture
     }
 
     [Fact]
+    public async Task FilterReadings_BoundsWithANonUtcOffset_SelectTheSameInstants()
+    {
+        await fixture.ResetAsync();
+        var sensor = PostgresFixture.Sensor("Kitchen", SensorType.Energy);
+        await fixture.SeedAsync(
+            Energy(sensor, Start, 1),
+            Energy(sensor, Start.AddHours(1), 2),
+            Energy(sensor, Start.AddHours(2), 3)
+        );
+        var offset = TimeSpan.FromHours(3);
+
+        await using var context = fixture.CreateContext();
+        var count = await context
+            .FilterReadings(
+                new ReadingFilter
+                {
+                    From = Start.ToOffset(offset),
+                    To = Start.AddHours(2).ToOffset(offset),
+                }
+            )
+            .CountAsync(TestContext.Current.CancellationToken);
+
+        Assert.Equal(2, count);
+    }
+
+    [Fact]
+    public async Task LatestPerSensor_BoundsWithANonUtcOffset_SelectTheSameInstants()
+    {
+        await fixture.ResetAsync();
+        var kitchen = PostgresFixture.Sensor("Kitchen", SensorType.Energy);
+        await fixture.SeedAsync(Energy(kitchen, Start, 1));
+
+        await using var context = fixture.CreateContext();
+        var latest = await context
+            .LatestPerSensor(new ReadingFilter { From = Start.ToOffset(TimeSpan.FromHours(3)) })
+            .ToListAsync(TestContext.Current.CancellationToken);
+
+        Assert.Single(latest);
+    }
+
+    [Fact]
     public async Task LatestPerSensor_Always_ReturnsOneNewestRowPerSensor()
     {
         await fixture.ResetAsync();

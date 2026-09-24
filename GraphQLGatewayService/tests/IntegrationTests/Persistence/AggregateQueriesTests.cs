@@ -5,7 +5,9 @@ using GraphQLGatewayService.Domain.Contracts;
 using GraphQLGatewayService.Domain.Enums;
 using GraphQLGatewayService.Infrastructure.Persistence.Queries;
 using GraphQLGatewayService.Infrastructure.Persistence.ReadModels;
+using Microsoft.EntityFrameworkCore;
 using Moq;
+using System.Globalization;
 
 /// <summary>
 /// Covers the <c>date_trunc</c> grouping. Bucket boundaries are the part that cannot be tested
@@ -200,6 +202,88 @@ public sealed class AggregateQueriesTests(PostgresFixture fixture) : IClassFixtu
         );
 
         Assert.Single(Assert.Single(series).Points);
+    }
+
+    public static TheoryData<AggregationInterval, string> PeriodBoundaryCases
+    {
+        get
+        {
+            var cases = new TheoryData<AggregationInterval, string>();
+            string[] instants =
+            [
+                "2026-05-03T23:30:00Z",
+                "2026-05-04T00:00:00Z",
+                "2026-01-31T12:30:00Z",
+                "2026-03-01T00:00:00Z",
+            ];
+
+            foreach (var interval in Enum.GetValues<AggregationInterval>())
+            {
+                foreach (var instant in instants)
+                {
+                    cases.Add(interval, instant);
+                }
+            }
+
+            return cases;
+        }
+    }
+
+    [Fact]
+    public async Task AggregateAsync_FromInsideAPeriod_CountsTheWholeFirstPeriod()
+    {
+        await fixture.ResetAsync();
+        var sensor = PostgresFixture.Sensor("Kitchen", SensorType.Energy);
+        await fixture.SeedAsync(
+            Energy(sensor, Noon.AddMinutes(10), 1),
+            Energy(sensor, Noon.AddMinutes(40), 3)
+        );
+
+        await using var context = fixture.CreateContext();
+        var series = await context.AggregateAsync(
+            ReadingMetric.EnergyKwh,
+            AggregationInterval.Hour,
+            Window(Noon.AddMinutes(30), Noon.AddHours(2)),
+            location: null,
+            TestContext.Current.CancellationToken
+        );
+
+        var point = Assert.Single(Assert.Single(series).Points);
+        Assert.Equal(Noon, point.PeriodStart);
+        Assert.Equal(2, point.Count);
+    }
+
+    [Theory]
+    [MemberData(nameof(PeriodBoundaryCases))]
+    public async Task Resolve_Bounds_LandWhereDateTruncPutsThem(
+        AggregationInterval interval,
+        string instant
+    )
+    {
+        var at = DateTimeOffset.Parse(instant, CultureInfo.InvariantCulture);
+        var unit = interval.ToString().ToLowerInvariant();
+        var cancellationToken = TestContext.Current.CancellationToken;
+
+        await using var context = fixture.CreateContext();
+        var floor = await context
+            .Database.SqlQuery<DateTimeOffset>(
+                $"SELECT date_trunc({unit}, {at}, 'UTC') AS \"Value\""
+            )
+            .SingleAsync(cancellationToken);
+        var ceiling = await context
+            .Database.SqlQuery<DateTimeOffset>(
+                $"""
+                SELECT CASE WHEN date_trunc({unit}, {at}, 'UTC') = {at} THEN {at}
+                ELSE date_trunc({unit}, {at}, 'UTC') + ('1 ' || {unit})::interval END AS "Value"
+                """
+            )
+            .SingleAsync(cancellationToken);
+
+        var starting = AggregateWindow.Resolve(interval, at, at.AddDays(2), TimeProvider.System);
+        var ending = AggregateWindow.Resolve(interval, at.AddDays(-2), at, TimeProvider.System);
+
+        Assert.Equal(floor, starting.Value.From);
+        Assert.Equal(ceiling, ending.Value.To);
     }
 
     [Fact]

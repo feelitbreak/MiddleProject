@@ -35,6 +35,14 @@ describe('ErrorPanel', () => {
     expect(screen.queryByText(/correlationId/)).not.toBeInTheDocument();
   });
 
+  it('should show the HTTP status when the gateway refused the request outright', () => {
+    const refused = Object.assign(new Error('Received status code 429'), { statusCode: 429 });
+
+    render(<ErrorPanel error={new ApolloError({ networkError: refused })} onRetry={jest.fn()} />);
+
+    expect(screen.getByText('HTTP_429')).toBeInTheDocument();
+  });
+
   /** A transport failure carries no GraphQL error, so the code has to fall back to something true. */
   it('should fall back to NETWORK_ERROR when the request never reached the gateway', () => {
     render(

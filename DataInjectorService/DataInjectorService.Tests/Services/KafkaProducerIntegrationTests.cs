@@ -7,6 +7,10 @@ using DataInjectorService.Services;
 using DataInjectorService.Telemetry;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+using OpenTelemetry;
+using OpenTelemetry.Trace;
+using System.Diagnostics;
+using System.Text;
 using System.Text.Json;
 using Testcontainers.Kafka;
 
@@ -128,6 +132,40 @@ public sealed class KafkaProducerIntegrationTests(KafkaContainerFixture fixture)
         var messages = this.Consume(topic, count: 1);
 
         Assert.Equal("energy:Hall", messages[0].Message.Key);
+    }
+
+    [Fact]
+    public async Task ProduceAsync_InsideATrace_CarriesItsTraceparent()
+    {
+        var topic = NewTopic();
+        using var tracing = Sdk.CreateTracerProviderBuilder().Build();
+        using var poll = new Activity("poll").SetIdFormat(ActivityIdFormat.W3C).Start();
+
+        await using (var producer = this.BuildProducer(topic))
+        {
+            await producer.ProduceAsync(MakeReading(), TestContext.Current.CancellationToken);
+        }
+
+        var headers = this.Consume(topic, count: 1)[0].Message.Headers;
+
+        Assert.True(headers.TryGetLastBytes("traceparent", out var traceParent));
+        Assert.Equal(poll.Id, Encoding.UTF8.GetString(traceParent));
+    }
+
+    [Fact]
+    public async Task ProduceAsync_OutsideATrace_AddsNoTraceparent()
+    {
+        var topic = NewTopic();
+        using var tracing = Sdk.CreateTracerProviderBuilder().Build();
+
+        await using (var producer = this.BuildProducer(topic))
+        {
+            await producer.ProduceAsync(MakeReading(), TestContext.Current.CancellationToken);
+        }
+
+        var headers = this.Consume(topic, count: 1)[0].Message.Headers;
+
+        Assert.False(headers.TryGetLastBytes("traceparent", out _));
     }
 
     [Fact]
