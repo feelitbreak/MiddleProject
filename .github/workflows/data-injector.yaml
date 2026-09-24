@@ -6,9 +6,11 @@ on:
       - main
     paths:
       - 'DataInjectorService/**'
+      - '.editorconfig'
   pull_request:
     paths:
       - 'DataInjectorService/**'
+      - '.editorconfig'
 
 jobs:
   build:

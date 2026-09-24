@@ -36,6 +36,10 @@ public sealed class KafkaConsumerServiceTests(PostgresFixture postgres, KafkaFix
     : IClassFixture<PostgresFixture>,
         IClassFixture<KafkaFixture>
 {
+    private static readonly string[] FirstPollSensors = ["Kitchen", "Garage", "Office"];
+
+    private static readonly string[] SecondPollSensors = ["Hall", "Bedroom"];
+
     [Fact]
     public async Task Consume_ValidMessages_PersistsEveryReading()
     {
@@ -292,14 +296,14 @@ public sealed class KafkaConsumerServiceTests(PostgresFixture postgres, KafkaFix
         await kafka.ProduceAsync(
             topic,
             [
-                .. new[] { "Kitchen", "Garage", "Office" }.Select(name =>
+                .. FirstPollSensors.Select(name =>
                     (
                         $"energy:{name}",
                         Reading("energy", name, """{"energy":1.5}""", collectedAt),
                         (Headers?)TraceHeaders(firstPoll)
                     )
                 ),
-                .. new[] { "Hall", "Bedroom" }.Select(name =>
+                .. SecondPollSensors.Select(name =>
                     (
                         $"energy:{name}",
                         Reading("energy", name, """{"energy":2.5}""", collectedAt),
@@ -314,20 +318,37 @@ public sealed class KafkaConsumerServiceTests(PostgresFixture postgres, KafkaFix
             () => Task.FromResult(kafka.Consume(persistedTopic, count: 1, TimeSpan.FromSeconds(1)).Count > 0)
         );
 
-        var batch = Assert.Single(
-            batches,
-            activity => activity.Links.Any(link => link.Context.TraceId == firstPoll)
+        // Batch boundaries depend on fetch timing and redelivery, so this holds for any split.
+        var ours = batches
+            .Where(batch =>
+                batch.Links.Any(link =>
+                    link.Context.TraceId == firstPoll || link.Context.TraceId == secondPoll
+                )
+            )
+            .ToList();
+        Assert.All(
+            ours,
+            batch =>
+                Assert.Equal(
+                    batch.Links.Count(),
+                    batch.Links.Select(link => link.Context.TraceId).Distinct().Count()
+                )
         );
-        var linked = batch.Links.Select(link => link.Context.TraceId).ToList();
+        var linked = ours.SelectMany(batch => batch.Links.Select(link => link.Context.TraceId))
+            .ToHashSet();
         Assert.Equal(2, linked.Count);
         Assert.Contains(firstPoll, linked);
         Assert.Contains(secondPoll, linked);
 
-        var announced = Assert.Single(kafka.Consume(persistedTopic, count: 1, TimeSpan.FromSeconds(10)));
-        Assert.StartsWith(
-            $"00-{batch.TraceId.ToHexString()}-",
-            HeaderValue(announced, "traceparent"),
-            StringComparison.Ordinal
+        var announced = kafka.Consume(persistedTopic, count: 1, TimeSpan.FromSeconds(10))[0];
+        var traceParent = HeaderValue(announced, "traceparent") ?? string.Empty;
+        Assert.Contains(
+            ours,
+            batch =>
+                traceParent.StartsWith(
+                    $"00-{batch.TraceId.ToHexString()}-",
+                    StringComparison.Ordinal
+                )
         );
     }
 
