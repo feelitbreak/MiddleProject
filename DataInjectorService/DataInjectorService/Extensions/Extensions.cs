@@ -3,10 +3,12 @@ namespace DataInjectorService.Extensions;
 using DataInjectorService.Configuration;
 using DataInjectorService.Services;
 using DataInjectorService.Telemetry;
+using Microsoft.Extensions.Http.Resilience;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using System.Diagnostics.CodeAnalysis;
+using System.Net;
 
 /// <summary>
 /// <see cref="IServiceCollection"/> extension methods that keep <c>Program.cs</c>
@@ -103,7 +105,6 @@ public static class Extensions
         // Named HTTP client consumed by WeakAppService via IHttpClientFactory.
         // The standard resilience pipeline provides:
         //   retry (exponential back-off + jitter) → circuit breaker → attempt timeout.
-        // 429 responses are handled explicitly in WeakAppService and are not retried here.
         services
             .AddHttpClient(
                 "WeakApp",
@@ -120,6 +121,12 @@ public static class Extensions
                 options.Retry.MaxRetryAttempts = weakAppOptions.RetryCount;
                 options.Retry.Delay = TimeSpan.FromSeconds(weakAppOptions.RetryBaseDelaySeconds);
                 options.Retry.UseJitter = true;
+
+                options.Retry.ShouldHandle = args =>
+                    ValueTask.FromResult(
+                        args.Outcome.Result?.StatusCode != HttpStatusCode.TooManyRequests
+                            && HttpClientResiliencePredicates.IsTransient(args.Outcome)
+                    );
 
                 options.AttemptTimeout.Timeout = TimeSpan.FromSeconds(
                     weakAppOptions.TimeoutSeconds
