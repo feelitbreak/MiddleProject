@@ -99,7 +99,7 @@ describe('LatestValues', () => {
   it('should show no band verdict for a location that only reports energy', () => {
     renderPanel(groupByLocation([energyReading({ location: 'Garage' })], NOW));
 
-    expect(screen.queryByText('IN BAND')).not.toBeInTheDocument();
+    expect(screen.queryByText('NORMAL')).not.toBeInTheDocument();
     expect(screen.getAllByText('LIVE')[0]).toBeInTheDocument();
   });
 

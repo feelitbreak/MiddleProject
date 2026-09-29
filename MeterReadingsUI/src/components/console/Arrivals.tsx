@@ -21,7 +21,7 @@ export default function Arrivals({ lastEvent, eventsSeen, rows, now }: Readonly<
 
   return (
     <Window
-      title="ARRIVALS &middot; readingsChanged"
+      title="ARRIVALS"
       className="area-arrivals"
       query={
         lastEvent === null

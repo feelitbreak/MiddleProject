@@ -31,30 +31,32 @@ export default function SensorTypeAggregates({ rows }: Readonly<SensorTypeAggreg
 
   return (
     <Window title="AGGREGATE &mdash; BY SENSOR TYPE">
-      <div className="type-card type-card-air">
-        <span className="type-name">
-          AIR_QUALITY <span className="type-unit">avg ppm</span>
-        </span>
-        <span className="type-value tabular">{avgCo2 === null ? '--' : Math.round(avgCo2)}</span>
-        <span className="type-meta">{air.length} SENSORS REPORTING</span>
-      </div>
-      <div className="type-card type-card-motion">
-        <span className="type-name">
-          MOTION <span className="type-unit">fraction</span>
-        </span>
-        <span className="type-value tabular">
-          {motionFraction === null ? '--' : `${Math.round(motionFraction * 100)}%`}
-        </span>
-        <span className="type-meta">{motion.length} SENSORS REPORTING</span>
-      </div>
-      <div className="type-card type-card-energy">
-        <span className="type-name">
-          ENERGY <span className="type-unit">avg kWh</span>
-        </span>
-        <span className="type-value tabular">{avgKwh === null ? '--' : Math.round(avgKwh)}</span>
-        <span className="type-meta">
-          {energy.length} SENSORS REPORTING{lostCount > 0 ? ` · ${lostCount} LOCATION LOST` : ''}
-        </span>
+      <div className="scroll-area">
+        <div className="type-card type-card-air">
+          <span className="type-name">
+            AIR_QUALITY <span className="type-unit">avg ppm</span>
+          </span>
+          <span className="type-value tabular">{avgCo2 === null ? '--' : Math.round(avgCo2)}</span>
+          <span className="type-meta">{air.length} SENSORS REPORTING</span>
+        </div>
+        <div className="type-card type-card-motion">
+          <span className="type-name">
+            MOTION <span className="type-unit">fraction</span>
+          </span>
+          <span className="type-value tabular">
+            {motionFraction === null ? '--' : `${Math.round(motionFraction * 100)}%`}
+          </span>
+          <span className="type-meta">{motion.length} SENSORS REPORTING</span>
+        </div>
+        <div className="type-card type-card-energy">
+          <span className="type-name">
+            ENERGY <span className="type-unit">avg kWh</span>
+          </span>
+          <span className="type-value tabular">{avgKwh === null ? '--' : Math.round(avgKwh)}</span>
+          <span className="type-meta">
+            {energy.length} SENSORS REPORTING{lostCount > 0 ? ` · ${lostCount} LOCATION LOST` : ''}
+          </span>
+        </div>
       </div>
     </Window>
   );

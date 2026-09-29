@@ -24,13 +24,13 @@ describe('BandChip', () => {
   it('should show nothing but a dash when the reading has no threshold', () => {
     render(<BandChip breaches={[]} hasThreshold={false} />);
 
-    expect(screen.queryByText('IN BAND')).not.toBeInTheDocument();
+    expect(screen.queryByText('NORMAL')).not.toBeInTheDocument();
     expect(screen.getByText('—')).toBeInTheDocument();
   });
 
-  it('should say IN BAND when a thresholded reading trips nothing', () => {
+  it('should say NORMAL when a thresholded reading trips nothing', () => {
     render(<BandChip breaches={[]} hasThreshold />);
-    expect(screen.getByText('IN BAND')).toBeInTheDocument();
+    expect(screen.getByText('NORMAL')).toBeInTheDocument();
   });
 
   it('should print the limit alongside the breach so the number is never implied', () => {
@@ -58,9 +58,9 @@ describe('BandChip', () => {
 });
 
 describe('ThresholdStrip', () => {
-  it('should state that the thresholds are the app own, not the gateway', () => {
+  it('should label the strip as alert thresholds', () => {
     render(<ThresholdStrip />);
-    expect(screen.getByText(/OURS, NOT THE GATEWAY/i)).toBeInTheDocument();
+    expect(screen.getByText('ALERT THRESHOLDS')).toBeInTheDocument();
   });
 
   it('should print every threshold it judges against', () => {
