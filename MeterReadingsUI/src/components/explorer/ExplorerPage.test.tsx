@@ -50,7 +50,11 @@ function readingsMock(
           __typename: 'ReadingConnection',
           totalCount,
           pageInfo: { __typename: 'PageInfo', hasNextPage, endCursor },
-          nodes,
+          edges: nodes.map((node, index) => ({
+            __typename: 'ReadingEdge',
+            cursor: `cursor-${index}`,
+            node,
+          })),
         },
       },
     },
@@ -132,7 +136,7 @@ describe('ExplorerPage', () => {
   it('should print the thresholds it judges the table against', async () => {
     renderExplorer([catalogueMock, readingsMock([reading(1)])]);
 
-    expect(await screen.findByText(/OURS, NOT THE GATEWAY/i)).toBeInTheDocument();
+    expect(await screen.findByText('ALERT THRESHOLDS')).toBeInTheDocument();
   });
 
   it('should show identity columns while no single location is filtered', async () => {

@@ -28,7 +28,7 @@ export default function ExplorerPage({ controls }: Readonly<ExplorerPageProps>) 
   });
 
   const connection = data?.readings;
-  const nodes = useMemo(() => connection?.nodes ?? [], [connection]);
+  const nodes = useMemo(() => connection?.edges?.map((edge) => edge.node) ?? [], [connection]);
   const pageInfo = connection?.pageInfo;
 
   const loadMore = useCallback(() => {
@@ -42,9 +42,11 @@ export default function ExplorerPage({ controls }: Readonly<ExplorerPageProps>) 
   const oldest = nodes.at(-1)?.collectedAt ?? null;
   const hasNextPage = pageInfo?.hasNextPage === true;
 
-  const cursorClause =
-    pageInfo?.endCursor == null ? '' : `, after: "${pageInfo.endCursor.slice(0, 24)}…"`;
-  const readingsQuery = `readings(first: ${pageSize}${cursorClause})`;
+  const totalCount = connection?.totalCount ?? null;
+  const readingsQuery =
+    nodes.length === 0
+      ? 'No readings loaded yet'
+      : `${nodes.length.toLocaleString()} of ${(totalCount ?? nodes.length).toLocaleString()} readings loaded`;
 
   const readingsTable = (
     <div className="scroll-area">
@@ -69,7 +71,6 @@ export default function ExplorerPage({ controls }: Readonly<ExplorerPageProps>) 
             <th>
               ENERGY<i className="column-unit">KWH</i>
             </th>
-            <th>ID</th>
           </tr>
         </thead>
         <tbody>
@@ -92,7 +93,6 @@ export default function ExplorerPage({ controls }: Readonly<ExplorerPageProps>) 
                 <td>{reading.motionDetected ? 'YES' : 'NO'}</td>
               )}
               {numberCell(reading.energyKwh, false, 1)}
-              <td className="tabular row-id">{reading.id}</td>
             </tr>
           ))}
         </tbody>
@@ -133,28 +133,30 @@ export default function ExplorerPage({ controls }: Readonly<ExplorerPageProps>) 
         />
 
         <Window title="MATCHING SET">
-          <div className="summary-item">
-            <span className="summary-label">TOTAL COUNT</span>
-            <span className="summary-value tabular">
-              {connection?.totalCount.toLocaleString() ?? '--'}
-            </span>
-            <span className="summary-meta">READINGS MATCH THIS FILTER</span>
-          </div>
-          <div className="summary-item">
-            <span className="summary-label">NEWEST</span>
-            <span className="summary-value tabular">
-              {newest === null ? '--' : formatClock(newest)}
-            </span>
-            <span className="summary-meta">
-              {newest === null ? 'NOTHING LOADED' : formatDay(newest)}
-            </span>
-          </div>
-          <div className="summary-item">
-            <span className="summary-label">OLDEST LOADED</span>
-            <span className="summary-value tabular">
-              {oldest === null ? '--' : formatClock(oldest)}
-            </span>
-            <span className="summary-meta">{nodes.length} ROWS ON SCREEN</span>
+          <div className="scroll-area">
+            <div className="summary-item">
+              <span className="summary-label">TOTAL COUNT</span>
+              <span className="summary-value tabular">
+                {totalCount === null ? '--' : totalCount.toLocaleString()}
+              </span>
+              <span className="summary-meta">READINGS MATCH THIS FILTER</span>
+            </div>
+            <div className="summary-item">
+              <span className="summary-label">NEWEST</span>
+              <span className="summary-value tabular">
+                {newest === null ? '--' : formatClock(newest)}
+              </span>
+              <span className="summary-meta">
+                {newest === null ? 'NOTHING LOADED' : formatDay(newest)}
+              </span>
+            </div>
+            <div className="summary-item">
+              <span className="summary-label">OLDEST LOADED</span>
+              <span className="summary-value tabular">
+                {oldest === null ? '--' : formatClock(oldest)}
+              </span>
+              <span className="summary-meta">{nodes.length} ROWS ON SCREEN</span>
+            </div>
           </div>
         </Window>
       </div>
@@ -180,8 +182,8 @@ export default function ExplorerPage({ controls }: Readonly<ExplorerPageProps>) 
 
         <div className="pager">
           <span className="pager-note">
-            SHOWING {nodes.length} OF {connection?.totalCount.toLocaleString() ?? '--'} &middot;
-            ORDER NEWEST FIRST (FIXED SERVER-SIDE)
+            SHOWING {nodes.length} OF {totalCount === null ? '--' : totalCount.toLocaleString()}{' '}
+            &middot; ORDER NEWEST FIRST (FIXED SERVER-SIDE)
           </span>
           <button
             type="button"

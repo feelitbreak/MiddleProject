@@ -62,18 +62,21 @@ export const READINGS_PAGE = graphql(`
         hasNextPage
         endCursor
       }
-      nodes {
-        id
-        collectedAt
-        co2
-        pm25
-        humidity
-        motionDetected
-        energyKwh
-        sensor {
+      edges {
+        cursor
+        node {
           id
-          name
-          type
+          collectedAt
+          co2
+          pm25
+          humidity
+          motionDetected
+          energyKwh
+          sensor {
+            id
+            name
+            type
+          }
         }
       }
     }

@@ -32,7 +32,7 @@ export default function LocationChart({ metric, interval, where }: Readonly<Loca
 
   const aggregates = useMemo(() => data?.readingAggregates ?? [], [data]);
 
-  const { series, ticks, unit } = useMemo(() => {
+  const { series, ticks, unit, periodCount } = useMemo(() => {
     // Periods are aligned to the interval server-side, so the union of period starts is the axis.
     // ISO-8601 with a fixed offset sorts chronologically, but the comparator is explicit rather
     // than relying on the default's string coercion.
@@ -62,6 +62,7 @@ export default function LocationChart({ metric, interval, where }: Readonly<Loca
       series: built,
       ticks: labels.length > 1 ? labels : ['START', 'NOW'],
       unit: aggregates[0]?.unit ?? METRICS.find((m) => m.value === metric)?.unit ?? '',
+      periodCount: allPeriods.length,
     };
   }, [aggregates, metric]);
 
@@ -75,7 +76,12 @@ export default function LocationChart({ metric, interval, where }: Readonly<Loca
       detail="No readings fall in this window, so there is nothing to aggregate. Widen the range or clear the location filter."
     />
   );
-  const query = `readingAggregates(metric: ${metric}, interval: ${interval}) · unit ${unit}`;
+  const locationWord = series.length === 1 ? 'location' : 'locations';
+  const periodWord = periodCount === 1 ? 'period' : 'periods';
+  const query =
+    series.length === 0
+      ? `No ${label.toLowerCase()} data in range`
+      : `${series.length} ${locationWord} · ${periodCount} ${periodWord}`;
 
   let body;
   if (error) {

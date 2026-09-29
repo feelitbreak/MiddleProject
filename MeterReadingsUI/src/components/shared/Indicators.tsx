@@ -35,7 +35,7 @@ export function BandChip({
   if (!hasThreshold) return <span className="no-value">&mdash;</span>;
 
   const first = breaches[0];
-  if (first === undefined) return <span className="band-chip band-chip-ok">IN BAND</span>;
+  if (first === undefined) return <span className="band-chip band-chip-ok">NORMAL</span>;
 
   return (
     <span className="band-chip band-chip-breached">
@@ -46,15 +46,11 @@ export function BandChip({
   );
 }
 
-/**
- * The thresholds are the app's own, so every surface that judges a value prints them rather than
- * letting a red number imply the gateway said so.
- */
 export function ThresholdStrip() {
   const { co2Ppm, pm25, humidityPercent } = ALERT_THRESHOLDS;
   return (
     <div className="threshold-strip">
-      <span>ALERT THRESHOLDS &mdash; OURS, NOT THE GATEWAY&apos;S &mdash;</span>
+      <span>ALERT THRESHOLDS</span>
       <span>
         CO2 <b className="threshold-value">&gt;{co2Ppm.max} PPM</b>
       </span>

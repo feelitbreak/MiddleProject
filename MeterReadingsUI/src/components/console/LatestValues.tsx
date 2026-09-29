@@ -86,7 +86,7 @@ export default function LatestValues({
                     LAST READ<i className="column-unit">FEED</i>
                   </th>
                   <th>
-                    READING<i className="column-unit">BAND</i>
+                    READING<i className="column-unit">STATUS</i>
                   </th>
                 </tr>
               </thead>

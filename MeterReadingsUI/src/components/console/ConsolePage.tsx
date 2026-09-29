@@ -65,7 +65,7 @@ export default function ConsolePage({ controls, live }: Readonly<ConsolePageProp
           loading={latest.loading && latest.data === undefined}
           refreshing={latest.loading && latest.data !== undefined}
           now={now}
-          query={`latestReadings(where:) · ${sensorCount} sensors, grouped into ${visible.length} locations`}
+          query={`${sensorCount} sensors, grouped into ${visible.length} locations`}
         />
       )}
 
