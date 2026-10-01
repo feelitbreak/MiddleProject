@@ -39,8 +39,7 @@ WeakApp API --(HTTP poll)--> DataInjectorService --(Kafka: meter-readings)--> Da
 | `grafana` | Dashboards | 3000 |
 | `watchtower` | Pulls newly published images and restarts the services running them | — |
 
-Copy `.env.example` to `.env` and fill in the three API keys, then bring everything up with
-`docker compose up -d`. Every service runs from a prebuilt image on Docker Hub rather than building
+Bring everything up with `docker compose up -d`; no setup is needed. Every service runs from a prebuilt image on Docker Hub rather than building
 locally, so `up` never compiles anything — CI publishes the images and watchtower rolls them out.
 
 Services share no assemblies. Where two of them need the same shape, each carries its own copy —
@@ -62,8 +61,9 @@ anonymous so orchestrators and Prometheus can reach them. nginx injects the key 
 `/graphql` and `/hubs/`, so the browser never holds one. The injector has no key: it exposes no
 business API.
 
-Keys live in `.env` (gitignored, copied from `.env.example`); the real values are repository
-secrets. nginx reads them at container start, so rotating one is a restart.
+`docker-compose.yml` ships demo-only default keys, which are public: set your own in `.env`
+(gitignored, see `.env.example`) before exposing the stack beyond localhost. nginx reads them at
+container start, so rotating one is a restart.
 
 | Surface | Where |
 |---|---|

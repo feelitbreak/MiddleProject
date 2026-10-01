@@ -33,7 +33,8 @@ services:
       # The session time zone is pinned so that date_trunc buckets in UTC rather than local time.
       - Database__ConnectionString=Host=postgres;Port=5432;Database=meterdb;Username=postgres;Password=postgres;Options=-c timezone=UTC
       - Database__ApplyMigrationsOnStartup=true
-      - ApiKey__Key=${PROCESSOR_API_KEY:?set it in .env - see .env.example}
+      # Demo-only default so `docker compose up` works without a .env; set the variable to override.
+      - ApiKey__Key=${PROCESSOR_API_KEY:-rjzkXNc8zGT605ncmfauTFj6JXvs0P2ujDrOnsoGcjV1b8rA}
     # Swagger documents the REST API here, so this port is how you exercise it. The key is what
     # defends it -- paste it into Swagger's Authorize box.
     ports:
@@ -52,7 +53,8 @@ services:
       # Read-only: DataProcessorService owns this schema and applies its migrations.
       # The session time zone is pinned so that date_trunc buckets in UTC rather than local time.
       - Database__ConnectionString=Host=postgres;Port=5432;Database=meterdb;Username=postgres;Password=postgres;Options=-c timezone=UTC
-      - ApiKey__Key=${GRAPHQL_API_KEY:?set it in .env - see .env.example}
+      # Demo-only default, as for the processor.
+      - ApiKey__Key=${GRAPHQL_API_KEY:-NosKYSNRFNvwpVRiCg4v4Ctsu557epLs2OFPd2XQmFcK1V9l}
     # For tooling that can set X-Api-Key, plus probes and metrics. The Nitro IDE is not usable on
     # this port -- a browser navigation carries no header -- so it is served via the UI's /graphql.
     ports:
@@ -66,7 +68,8 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - Kafka__BootstrapServers=kafka:29092
-      - ApiKey__Key=${NOTIFICATION_API_KEY:?set it in .env - see .env.example}
+      # Demo-only default, as for the processor.
+      - ApiKey__Key=${NOTIFICATION_API_KEY:-bugsJb7wqtP4LabfGXs3GmTiEJrYtWWKbZBl4icsbyX5V1sv}
     # Swagger for the probes. The hub monitor here cannot reach the hub -- a browser cannot set a
     # header on a WebSocket handshake -- so use /hub-monitor/ on the UI origin instead.
     ports:
@@ -84,8 +87,9 @@ services:
     environment:
       # nginx injects these server-side, so nothing about the back ends -- least of all a key --
       # is baked into the bundle at build time.
-      - GRAPHQL_API_KEY=${GRAPHQL_API_KEY:?set it in .env - see .env.example}
-      - NOTIFICATION_API_KEY=${NOTIFICATION_API_KEY:?set it in .env - see .env.example}
+      # Must match the back ends' defaults above.
+      - GRAPHQL_API_KEY=${GRAPHQL_API_KEY:-NosKYSNRFNvwpVRiCg4v4Ctsu557epLs2OFPd2XQmFcK1V9l}
+      - NOTIFICATION_API_KEY=${NOTIFICATION_API_KEY:-bugsJb7wqtP4LabfGXs3GmTiEJrYtWWKbZBl4icsbyX5V1sv}
     depends_on:
       - graphql_gateway
       - notification_service
