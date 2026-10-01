@@ -111,7 +111,8 @@ preference for platform and library built-ins over bespoke utilities.
 
 ## Local stack
 
-`docker compose up -d` from the repo root, after copying `.env.example` to `.env`. WeakApp 8080,
+`docker compose up -d` from the repo root; `.env` is optional and only overrides the demo-only API
+key defaults in `docker-compose.yml`. WeakApp 8080,
 Postgres `meterdb` (`postgres`/`postgres`, local only), Kafka UI on 8070, Prometheus 9090,
 Grafana 3000, UI 8090, injector 8082, processor 8084, gateway 8086, notifications 8088.
 `watchtower` runs alongside them with no port, pulling newly published images.
